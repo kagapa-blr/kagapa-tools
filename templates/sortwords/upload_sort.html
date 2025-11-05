@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+<meta charset="UTF-8">
+<title>ಪದಾಲಂಕಾರ ಕ್ರಮ-ವಿಂಗಡಣೆ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kannada:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        background: linear-gradient(135deg,#eaf2fe 0%,#ffefde 100%);
+        font-family: 'Noto Sans Kannada', sans-serif;
+    }
+    .box {
+        max-width: 620px;
+        margin: 60px auto;
+        padding: 35px 28px 32px 28px;
+        background: #fff9f2;
+        border-radius: 14px;
+        box-shadow: 0 6px 28px rgba(100,34,0,0.08);
+    }
+    .kn-title {
+        font-size: 2.1rem;
+        font-weight: 600;
+        color: #2b3755;
+        margin-bottom: 8px;
+        letter-spacing: 1.5px;
+    }
+    .kn-sub {
+        font-size: 1rem;
+        color: #5c6e8a;
+        margin-bottom: 20px;
+    }
+    .drop-zone {
+        border: 2.5px dashed #e5b799;
+        background: #fff6ec;
+        padding: 42px;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        color: #2a2328;
+        font-size: 1.06rem;
+        margin-bottom: 13px;
+    }
+    .drop-zone.dragover {
+        background: #e0edff;
+        border-color: #5175dd;
+        color: #2b3755;
+    }
+    .progress {height:11px;border-radius:12px;margin-top:11px;}
+    .progress-bar {transition:width .6s cubic-bezier(.2,1,.2,1);}
+    .file-name {
+        background: #f7ecd6;
+        border-radius:7px;
+        padding:8px;
+        font-size:16px;
+        color:#6a4e24;
+        margin-top:8px;
+        text-align:left;
+        display:flex;justify-content:center;align-items:center;
+        gap:8px;
+    }
+    .result-box {
+        background: #fff;
+        padding: 20px 16px;
+        margin-top: 20px;
+        border-radius: 10px;
+        border: 1.5px solid #f3e4d9;
+        font-size: 16px;
+        color: #41332e;
+    }
+    .btn-kn {
+        background: #f89036;
+        border: none;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 7px;
+        padding: 11px 0;
+        letter-spacing: 1px;
+        font-size: 1.13rem;
+        box-shadow: 0 2px 6px rgba(249,144,54,0.08);
+        transition: background 0.18s;
+    }
+    .btn-kn:hover, .btn-kn:focus {
+        background: #ee7b18;
+        color: #fff;
+    }
+    .btn-outline-kn {
+        border: 1px solid #f89036;
+        color: #f89036;
+        font-weight: 500;
+        border-radius: 7px;
+        background: #fff1e5;
+        transition: background .18s, color .18s;
+    }
+    .btn-outline-kn:hover {
+        background: #f89036;
+        color: #fff;
+        border: 1px solid #f89036;
+    }
+</style>
+</head>
+<body>
+<div class="box">
+    <div class="kn-title">ಪದ ಗಾತ್ರ ವಿಂಗಡಕ (DOCX/TXT)</div>
+    <div class="kn-sub">ಫೈಲನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ &rarr; ಪದಗಳನ್ನು ಪ್ರತ್ಯೇಕಿಸಿ &rarr; CSV ರೂಪದಲ್ಲಿ ಉಳಿಸಿ</div>
+
+    <div id="dropZone" class="drop-zone" tabindex="0">
+        ಇಲ್ಲಿ ಫೈಲ್DROPಮಾಡಿ ಅಥವಾ ಕ್ಲಿಕ್ ಮಾಡಿ<br>
+        <span class="text-muted" style="font-size: 0.97rem;">(.docx, .txt ಮಾತ್ರ ಅನುಮತಿಸಲಾಗಿದೆ)</span>
+        <input id="fileInput" type="file" class="d-none" accept=".docx,.txt">
+    </div>
+    <div id="fileName" class="file-name d-none"></div>
+
+    <button id="startBtn" class="btn btn-kn w-100 mt-3">ಅಪ್‌ಲೋಡ್ ಮಾಡಿ & ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಿ</button>
+
+    <div id="progressWrap" class="d-none">
+        <div class="progress">
+            <div id="progressBar" class="progress-bar bg-warning"></div>
+        </div>
+    </div>
+
+    <div id="results" class="result-box text-muted">ಇನ್ನೂ ಫಲಿತಾಂಶಗಳು ಇಲ್ಲ.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const fileNameBox = document.getElementById("fileName");
+const startBtn = document.getElementById("startBtn");
+const progressWrap = document.getElementById("progressWrap");
+const progressBar = document.getElementById("progressBar");
+const results = document.getElementById("results");
+
+let file = null;
+
+// Click → browse
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("keypress", (e)=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();fileInput.click();}});
+
+fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
+
+// Drag drop
+dropZone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+});
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(f){
+    if(!f) return;
+    const n = f.name.toLowerCase();
+    if(!(n.endsWith(".docx") || n.endsWith(".txt"))) {
+        alert("'.docx' ಮತ್ತು '.txt' ಮಾತ್ರ ಅನುಮತಿಸಲಾಗಿದೆ");
+        return;
+    }
+    file = f;
+    fileNameBox.textContent = f.name;
+    fileNameBox.classList.remove("d-none");
+    fileNameBox.innerHTML = `<span>📄</span> ${f.name}`;
+}
+
+// Upload
+startBtn.addEventListener("click", () => {
+    if(!file) return alert("ಮೊದಲು ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ");
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    startBtn.disabled = true;
+    progressWrap.classList.remove("d-none");
+    progressBar.style.width = "0%";
+
+    axios.post("/sort-doc/api/upload", fd, {
+        onUploadProgress:p=>progressBar.style.width = (p.loaded/p.total*100)+"%"
+    })
+    .then(res=>{
+        const d = res.data;
+        results.innerHTML = `
+            <div><b>ಒಟ್ಟು ಪದಗಳು:</b> ${d.total_word_count}</div>
+            <div><b>ಅದೇ ರೀತಿಯ ಪದಗಳು:</b> ${d.unique_word_count}</div>
+            <div><b>ಅತ್ಯಂತ ಚಿಕ್ಕ ಪದದ ಗಾತ್ರ:</b> ${d.min_word_length}</div>
+            <div><b>ಅತ್ಯಂತ ದೊಡ್ಡ ಪದದ ಗಾತ್ರ:</b> ${d.max_word_length}</div>
+            <div class="mt-3">
+                <a class="btn btn-outline-kn w-100 mb-2" href="${d.download_lowest_url}">📥 ಚಿಕ್ಕ ಪದಗಳ CSV</a>
+                <a class="btn btn-outline-kn w-100" href="${d.download_highest_url}">📥 ದೊಡ್ಡ ಪದಗಳ CSV</a>
+            </div>
+        `;
+        startBtn.disabled = false;
+        progressBar.style.width = "100%";
+        progressWrap.classList.add("d-none");
+    })
+    .catch(()=>{
+        alert("ಅಪ್‌ಲೋಡ್ ದೋಷ");
+        startBtn.disabled = false;
+        progressWrap.classList.add("d-none");
+    });
+});
+</script>
+</body>
+</html>
