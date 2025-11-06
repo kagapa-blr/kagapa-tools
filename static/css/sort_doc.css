@@ -1,0 +1,151 @@
+body {
+    background: linear-gradient(135deg, #eaf2fe 0%, #ffefde 100%);
+    font-family: 'Noto Sans Kannada', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 10px;
+}
+
+.box {
+    max-width: 640px;
+    width: 100%;
+    background: #fff9f2;
+    border-radius: 16px;
+    box-shadow: 0 6px 28px rgba(100, 34, 0, 0.08);
+    padding: 38px 30px 35px;
+    text-align: center;
+    animation: fadeIn .6s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.kn-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2b3755;
+    margin-bottom: 8px;
+}
+
+.kn-sub {
+    font-size: 1rem;
+    color: #6b7a93;
+    margin-bottom: 22px;
+}
+
+.drop-zone {
+    border: 2.5px dashed #f4b784;
+    background: #fff6ec;
+    padding: 48px 20px;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 1.07rem;
+    color: #3e2d1e;
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
+    background: #e7f1ff;
+    border-color: #5a83f7;
+    color: #2b3755;
+}
+
+.drop-zone i {
+    font-size: 2rem;
+    color: #f89036;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.file-name {
+    margin-top: 15px;
+    background: #fff2e1;
+    border: 1px solid #f8d5a3;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #684b29;
+    font-size: 16px;
+    word-break: break-word;
+}
+
+.btn-kn {
+    background: #f89036;
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 12px 0;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    transition: background 0.25s, transform 0.1s;
+    box-shadow: 0 4px 12px rgba(249, 144, 54, 0.2);
+}
+
+.btn-kn:hover {
+    background: #ee7b18;
+    transform: translateY(-1px);
+}
+
+.btn-kn:disabled {
+    background: #ffca98;
+    cursor: not-allowed;
+}
+
+.progress {
+    height: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, #f89036, #ffc879);
+}
+
+.result-box {
+    background: #fffdfb;
+    padding: 22px 16px;
+    margin-top: 24px;
+    border-radius: 10px;
+    border: 1.5px solid #f3e4d9;
+    font-size: 16px;
+    color: #3e2d1e;
+    text-align: left;
+    line-height: 1.6;
+}
+
+.btn-outline-kn {
+    border: 1px solid #f89036;
+    color: #f89036;
+    font-weight: 500;
+    border-radius: 8px;
+    background: #fff1e5;
+    transition: all .2s;
+}
+
+.btn-outline-kn:hover {
+    background: #f89036;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(249, 144, 54, 0.25);
+}
+
+.fade-in {
+    animation: fadeIn .5s ease;
+}

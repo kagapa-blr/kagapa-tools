@@ -1,0 +1,9 @@
+*.docx
+*.csv
+.idea
+*.log
+logs
+migrations
+*.pyc
+__pycache__
+.env
