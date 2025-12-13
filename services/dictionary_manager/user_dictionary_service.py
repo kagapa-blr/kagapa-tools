@@ -1,4 +1,9 @@
+from collections import Counter
+import io
+import re
 from sqlalchemy.exc import IntegrityError
+from docx import Document  # python-docx
+
 from config.database import kagapa_tools_db as db
 from models.spellcheck import UserAddedWord
 from services.dictionary_manager.main_dictionary_service import MainDictionaryService
@@ -139,5 +144,168 @@ class UserDictionaryService:
                 db.session.rollback()
                 logger.error(f"Failed to move word '{word}': {e}")
                 result["failed"].append(word)
+
+        return result
+
+
+# =====================================================================
+# 📄 BULK UPLOAD SERVICE – .txt / .docx → WORDS + FREQUENCY → USER TABLE
+# =====================================================================
+
+class UserDictionaryBulkUploadService:
+    """
+    Service to process uploaded documents (.txt, .docx),
+    extract words, compute frequencies, and update UserAddedWord table.
+    """
+
+    WORD_RE = re.compile(r"\w+", re.UNICODE)
+
+    # -------------------------------------------------
+    # TEXT EXTRACTORS
+    # -------------------------------------------------
+    @staticmethod
+    def _extract_text_from_txt(file_obj: io.IOBase) -> str:
+        """
+        file_obj can be a Werkzeug FileStorage or file-like object.
+        Reads from the beginning and decodes as UTF-8 if bytes.
+        """
+        try:
+            file_obj.seek(0)
+        except Exception:
+            pass
+
+        stream = getattr(file_obj, "stream", file_obj)
+        data = stream.read()
+
+        if isinstance(data, bytes):
+            data = data.decode("utf-8", errors="ignore")
+
+        return data
+
+    @staticmethod
+    def _extract_text_from_docx(file_obj: io.IOBase) -> str:
+        """
+        file_obj can be a Werkzeug FileStorage, file-like in binary mode,
+        or anything python-docx accepts as a file-like.
+        """
+        if hasattr(file_obj, "stream"):
+            stream = file_obj.stream
+        else:
+            stream = file_obj
+
+        try:
+            stream.seek(0)
+        except Exception:
+            pass
+
+        document = Document(stream)
+        paragraphs = [p.text for p in document.paragraphs]
+        return "\n".join(paragraphs)
+
+    # -------------------------------------------------
+    # TOKENIZE + NORMALIZE
+    # -------------------------------------------------
+    @classmethod
+    def _tokenize_and_normalize(cls, text: str) -> list[str]:
+        """
+        Extract word-like tokens with regex, then normalize via normalize_word.
+        """
+        raw_tokens = cls.WORD_RE.findall(text)
+        tokens: list[str] = []
+
+        for t in raw_tokens:
+            norm = normalize_word(t)
+            if norm:
+                tokens.append(norm)
+
+        return tokens
+
+    # -------------------------------------------------
+    # PUBLIC API
+    # -------------------------------------------------
+    @classmethod
+    def process_file(
+            cls,
+            file_obj,
+            filename: str,
+            added_by: str | None = None,
+    ) -> dict:
+        """
+        Decide reader based on filename extension, extract text, compute
+        frequencies, and upsert into UserAddedWord.
+
+        Returns:
+        {
+          "file": "name.docx",
+          "total_tokens": int,
+          "unique_words": int,
+          "inserted": [...],
+          "updated": [...],
+          "skipped": [...],
+          "errors": [{ "word": ..., "error": "..." }]
+        }
+        """
+        filename_lower = (filename or "").lower()
+
+        if filename_lower.endswith(".txt"):
+            text = cls._extract_text_from_txt(file_obj)
+        elif filename_lower.endswith(".docx"):
+            text = cls._extract_text_from_docx(file_obj)
+        else:
+            raise ValueError("Unsupported file type. Only .txt and .docx are allowed.")
+
+        tokens = cls._tokenize_and_normalize(text)
+        freq_map = Counter(tokens)
+
+        result = {
+            "file": filename,
+            "total_tokens": len(tokens),
+            "unique_words": len(freq_map),
+            "inserted": [],
+            "updated": [],
+            "skipped": [],
+            "errors": [],
+        }
+
+        for word, count in freq_map.items():
+            try:
+                existing: UserAddedWord | None = (
+                    UserAddedWord.query.filter_by(word=word).first()
+                )
+
+                if existing:
+                    existing.frequency = (existing.frequency or 0) + count
+                    db.session.add(existing)
+                    result["updated"].append(word)
+                else:
+                    new_entry = UserAddedWord(
+                        word=word,
+                        added_by=added_by,
+                        verified=False,
+                        frequency=count,
+                    )
+                    db.session.add(new_entry)
+                    result["inserted"].append(word)
+
+                db.session.commit()
+
+            except IntegrityError as e:
+                db.session.rollback()
+                logger.warning(f"IntegrityError for word '{word}': {e}")
+                result["skipped"].append(word)
+
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Failed to upsert word '{word}': {e}")
+                result["errors"].append({"word": word, "error": str(e)})
+
+        logger.info(
+            f"Processed uploaded file '{filename}' - > "
+            f"{result['total_tokens']} tokens, "
+            f"{result['unique_words']} unique, "
+            f"{len(result['inserted'])} inserted, "
+            f"{len(result['updated'])} updated, "
+            f"{len(result['errors'])} errors."
+        )
 
         return result
