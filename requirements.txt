@@ -1,4 +1,7 @@
-pandas
 flask
-python-docx
+sqlalchemy
+pymysql
 python-dotenv
+alembic
+pandas
+python-docx
