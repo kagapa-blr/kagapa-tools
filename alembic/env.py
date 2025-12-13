@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
-from config.database import db  # your Flask-SQLAlchemy db instance
+from config.database import kagapa_tools_db as db
 
 # Load environment variables from .env
 load_dotenv()

@@ -22,7 +22,6 @@ class MainDictionary(db.Model):
     def __repr__(self):
         return f"<MainDictionary(word='{self.word}', frequency={self.frequency})>"
 
-
 class UserAddedWord(db.Model):
     __tablename__ = "user_added_words"
 

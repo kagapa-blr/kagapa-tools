@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 from flask import Flask, render_template
-from config.database import init_db
+from config.database import init_db, create_tables
+from routes.manage_users.manage_users import manage_users_bp
 from routes.sortwords.sort_doc_routes import sort_doc_bp
 from utils.logger import setup_logger
 
@@ -28,11 +29,13 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_DIR
 # -------------------------
 init_db(app)
 logger.info("Database initialized successfully")
-
+# Create tables if they don't exist (for dev only)
+create_tables(app)
 # -------------------------
 # Register Blueprints
 # -------------------------
 app.register_blueprint(sort_doc_bp, url_prefix="/sort-doc")
+app.register_blueprint(manage_users_bp, url_prefix="/users")
 logger.info("Blueprint registered: sort_doc_bp")
 
 

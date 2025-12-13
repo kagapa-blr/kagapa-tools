@@ -1,7 +1,8 @@
 import os
-import time
 import uuid
+
 from flask import Blueprint, request, jsonify, render_template, send_file
+
 from utils.word_sort_tools import extract_words_from_file, sort_lowest_highest_words, create_csv
 
 sort_doc_bp = Blueprint("sort_doc", __name__)

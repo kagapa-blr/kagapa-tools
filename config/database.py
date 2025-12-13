@@ -65,3 +65,11 @@ def init_db(app):
     kagapa_tools_db.init_app(app)
 
     logger.info("Database initialized with PyMySQL")
+
+def create_tables(app):
+    """
+    Create all tables defined in SQLAlchemy models.
+    """
+    with app.app_context():
+        kagapa_tools_db.create_all()
+        print("All tables created successfully.")
