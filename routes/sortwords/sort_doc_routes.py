@@ -3,6 +3,7 @@ import uuid
 
 from flask import Blueprint, request, jsonify, render_template, send_file
 
+from security.jwt_decorators import login_required
 from utils.word_sort_tools import extract_words_from_file, sort_lowest_highest_words, create_csv
 
 sort_doc_bp = Blueprint("sort_doc", __name__)
@@ -12,6 +13,7 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 
 @sort_doc_bp.route("/", methods=["GET"])
+@login_required
 def sort_doc_ui():
     return render_template("sortwords/upload_sort.html")
 

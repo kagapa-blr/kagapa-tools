@@ -1,44 +1,58 @@
-// static/js/apiClient.js
+// -----------------------------
+// Token helpers
+// -----------------------------
+const getAccessToken = () => localStorage.getItem("access_token");
+const clearAccessToken = () => localStorage.removeItem("access_token");
 
-export const BASE_URL = "http://127.0.0.1:5000";
-
+// Default headers
 const defaultHeaders = {
     "Content-Type": "application/json"
 };
 
-// Build full URL with optional query params
-const buildUrl = (endpoint, params = {}) => {
-    const url = new URL(endpoint, BASE_URL);
-    Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-            url.searchParams.append(key, value);
-        }
-    });
-    return url.toString();
-};
-
-// Main fetch request
+// -----------------------------
+// Main fetch wrapper
+// -----------------------------
 const apiClient = {
     request: async ({ method, endpoint, body = null, params = {}, headers = {} }) => {
-        const url = buildUrl(endpoint, params);
+        // Build URL with query params
+        const url = new URL(endpoint, window.location.origin);
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                url.searchParams.append(key, value);
+            }
+        });
+
+        // Merge headers
         const options = {
             method: method.toUpperCase(),
             headers: { ...defaultHeaders, ...headers }
         };
 
-        // Handle body
+        // -----------------------------
+        // Attach JWT via Authorization header
+        // -----------------------------
+        const token = getAccessToken();
+        if (token && !options.headers["Authorization"]) {
+            options.headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        // -----------------------------
+        // Request body
+        // -----------------------------
         if (body && method.toUpperCase() !== "GET") {
             if (body instanceof FormData) {
                 options.body = body;
-                delete options.headers["Content-Type"]; // browser handles it
+                delete options.headers["Content-Type"]; // let browser handle multipart
             } else {
                 options.body = JSON.stringify(body);
             }
         }
 
-        const response = await fetch(url, options);
+        const response = await fetch(url.toString(), options);
 
-        // Always parse JSON if possible
+        // -----------------------------
+        // Parse response
+        // -----------------------------
         let data;
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
@@ -47,9 +61,20 @@ const apiClient = {
             data = await response.text();
         }
 
-        // Throw error for non-2xx status
+        // -----------------------------
+        // Handle auth failures
+        // -----------------------------
+        if (response.status === 401) {
+            clearAccessToken(); // clear token if invalid/expired
+            // Optional: redirect to login
+            // window.location.href = "/login";
+        }
+
+        // -----------------------------
+        // Throw for non-2xx
+        // -----------------------------
         if (!response.ok) {
-            const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const error = new Error(data?.message || `HTTP ${response.status}: ${response.statusText}`);
             error.status = response.status;
             error.data = data;
             throw error;
@@ -58,6 +83,9 @@ const apiClient = {
         return data;
     },
 
+    // -----------------------------
+    // HTTP helpers
+    // -----------------------------
     get: (endpoint, params = {}, headers = {}) =>
         apiClient.request({ method: "GET", endpoint, params, headers }),
 

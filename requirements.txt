@@ -5,3 +5,4 @@ python-dotenv
 alembic
 pandas
 python-docx
+pytz
