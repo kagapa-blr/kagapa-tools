@@ -1,4 +1,7 @@
-const API_BASE = '/api/v1/dictionary/user';
+// static/js/user_dictionary.js
+
+import apiClient from "./apiClient.js";
+import API_ENDPOINTS, { BASE_URL } from "./apiEndpoints.js"; // adjust path as needed
 
 const state = {
     addWords: [],
@@ -9,59 +12,62 @@ const state = {
 };
 
 const els = {
-    addWordsInput: document.getElementById('addWordsInput'),
-    addWordBtn: document.getElementById('addWordBtn'),
-    addWordsChips: document.getElementById('addWordsChips'),
-    addSubmitBtn: document.getElementById('addSubmitBtn'),
-    addClearBtn: document.getElementById('addClearBtn'),
+    addWordsInput: document.getElementById("addWordsInput"),
+    addWordBtn: document.getElementById("addWordBtn"),
+    addWordsChips: document.getElementById("addWordsChips"),
+    addSubmitBtn: document.getElementById("addSubmitBtn"),
+    addClearBtn: document.getElementById("addClearBtn"),
 
-    removeWordsInput: document.getElementById('removeWordsInput'),
-    removeWordBtn: document.getElementById('removeWordBtn'),
-    removeWordsChips: document.getElementById('removeWordsChips'),
-    removeSubmitBtn: document.getElementById('removeSubmitBtn'),
-    removeClearBtn: document.getElementById('removeClearBtn'),
+    removeWordsInput: document.getElementById("removeWordsInput"),
+    removeWordBtn: document.getElementById("removeWordBtn"),
+    removeWordsChips: document.getElementById("removeWordsChips"),
+    removeSubmitBtn: document.getElementById("removeSubmitBtn"),
+    removeClearBtn: document.getElementById("removeClearBtn"),
 
-    fileInput: document.getElementById('fileInput'),
-    addedByInput: document.getElementById('addedByInput'),
-    uploadBtn: document.getElementById('uploadBtn'),
-    uploadResultCounts: document.getElementById('uploadResultCounts'),
+    fileInput: document.getElementById("fileInput"),
+    addedByInput: document.getElementById("addedByInput"),
+    uploadBtn: document.getElementById("uploadBtn"),
+    uploadResultCounts: document.getElementById("uploadResultCounts"),
 
-    logArea: document.getElementById('logArea'),
-    refreshTableBtn: document.getElementById('refreshTableBtn'),
-    approveSelectedBtn: document.getElementById('approveSelectedBtn'),
-    tableSearchInput: document.getElementById('tableSearchInput'),
-    selectAllRows: document.getElementById('selectAllRows'),
-    tableSearchBtn: document.getElementById('tableSearchBtn'),
-    deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
+    logArea: document.getElementById("logArea"),
+    refreshTableBtn: document.getElementById("refreshTableBtn"),
+    approveSelectedBtn: document.getElementById("approveSelectedBtn"),
+    deleteSelectedBtn: document.getElementById("deleteSelectedBtn"),
+
+    tableSearchInput: document.getElementById("tableSearchInput"),
+    tableSearchBtn: document.getElementById("tableSearchBtn"),
+    selectAllRows: document.getElementById("selectAllRows"),
 };
 
-// ---------- Helpers ----------
-function log(message, type = 'info') {
-    const line = document.createElement('div');
-    line.className = 'mb-1';
-    const badge = document.createElement('span');
-    badge.className = 'badge me-1 bg-secondary';
-    if (type === 'ok') badge.className = 'badge me-1 bg-success';
-    if (type === 'err') badge.className = 'badge me-1 bg-danger';
-    if (type === 'warn') badge.className = 'badge me-1 bg-warning text-dark';
+// -----------------------------
+// Helpers
+// -----------------------------
+function log(message, type = "info") {
+    const line = document.createElement("div");
+    line.className = "mb-1";
+    const badge = document.createElement("span");
+    badge.className = "badge me-1 bg-secondary";
+    if (type === "ok") badge.className = "badge me-1 bg-success";
+    if (type === "err") badge.className = "badge me-1 bg-danger";
+    if (type === "warn") badge.className = "badge me-1 bg-warning text-dark";
     badge.textContent = type.toUpperCase();
-    const text = document.createElement('span');
-    text.textContent = ' ' + message;
+    const text = document.createElement("span");
+    text.textContent = " " + message;
     line.appendChild(badge);
     line.appendChild(text);
     els.logArea.prepend(line);
 }
 
 function renderChips(container, items, onRemove) {
-    container.innerHTML = '';
+    container.innerHTML = "";
     items.forEach((word, idx) => {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
+        const chip = document.createElement("span");
+        chip.className = "chip";
         chip.textContent = word;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.innerHTML = '&times;';
-        btn.addEventListener('click', () => onRemove(idx));
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.innerHTML = "&times;";
+        btn.addEventListener("click", () => onRemove(idx));
         chip.appendChild(btn);
         container.appendChild(chip);
     });
@@ -71,7 +77,7 @@ function parseWordsInput(value) {
     if (!value) return [];
     return value
         .split(/[,\s]+/)
-        .map(w => w.trim())
+        .map((w) => w.trim())
         .filter(Boolean);
 }
 
@@ -89,159 +95,152 @@ function toggleBusy(disabled) {
         els.approveSelectedBtn,
         els.deleteSelectedBtn,
         els.tableSearchBtn,
-    ].forEach(btn => {
+    ].forEach((btn) => {
         if (btn) btn.disabled = disabled;
     });
 }
 
-// ---------- Add section ----------
+// -----------------------------
+// Add section
+// -----------------------------
 function handleAddWords() {
     const words = parseWordsInput(els.addWordsInput.value);
     if (!words.length) return;
-    words.forEach(w => {
+    words.forEach((w) => {
         if (!state.addWords.includes(w)) state.addWords.push(w);
     });
-    els.addWordsInput.value = '';
-    renderChips(els.addWordsChips, state.addWords, idx => {
+    els.addWordsInput.value = "";
+    renderChips(els.addWordsChips, state.addWords, (idx) => {
         state.addWords.splice(idx, 1);
         renderChips(els.addWordsChips, state.addWords, arguments.callee);
     });
 }
 
 function initAddSection() {
-    els.addWordBtn.addEventListener('click', handleAddWords);
-    els.addWordsInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+    els.addWordBtn.addEventListener("click", handleAddWords);
+    els.addWordsInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
             e.preventDefault();
             handleAddWords();
         }
     });
 
-    els.addClearBtn.addEventListener('click', () => {
+    els.addClearBtn.addEventListener("click", () => {
         state.addWords = [];
         renderChips(els.addWordsChips, state.addWords, () => { });
     });
 
-    els.addSubmitBtn.addEventListener('click', async () => {
+    els.addSubmitBtn.addEventListener("click", async () => {
         if (!state.addWords.length) {
-            log('No words queued to add.', 'warn');
+            log("No words queued to add.", "warn");
             return;
         }
         toggleBusy(true);
         try {
-            const res = await fetch(`${API_BASE}/add`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ words: state.addWords }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                log(`Add failed: ${data.error || res.status}`, 'err');
-            } else {
-                const added = data.added || [];
-                const skipped = data.skipped || [];
-                log(`Add: ${added.length} added, ${skipped.length} skipped.`, 'ok');
-                state.addWords = [];
-                renderChips(els.addWordsChips, state.addWords, () => { });
-                reloadTable();
-            }
+            const data = await apiClient.post(
+                API_ENDPOINTS.USER_DICTIONARY.ADD,
+                { words: state.addWords }
+            );
+            const added = data.added || [];
+            const skipped = data.skipped || [];
+            log(`Add: ${added.length} added, ${skipped.length} skipped.`, "ok");
+            state.addWords = [];
+            renderChips(els.addWordsChips, state.addWords, () => { });
+            reloadTable();
         } catch (err) {
-            log(`Add error: ${err}`, 'err');
+            log(`Add failed: ${err.message || err}`, "err");
         } finally {
             toggleBusy(false);
         }
     });
 }
 
-// ---------- Delete section ----------
+// -----------------------------
+// Delete section
+// -----------------------------
 function handleRemoveWords() {
     const words = parseWordsInput(els.removeWordsInput.value);
     if (!words.length) return;
-    words.forEach(w => {
+    words.forEach((w) => {
         if (!state.removeWords.includes(w)) state.removeWords.push(w);
     });
-    els.removeWordsInput.value = '';
-    renderChips(els.removeWordsChips, state.removeWords, idx => {
+    els.removeWordsInput.value = "";
+    renderChips(els.removeWordsChips, state.removeWords, (idx) => {
         state.removeWords.splice(idx, 1);
         renderChips(els.removeWordsChips, state.removeWords, arguments.callee);
     });
 }
 
 function initDeleteSection() {
-    els.removeWordBtn.addEventListener('click', handleRemoveWords);
-    els.removeWordsInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+    els.removeWordBtn.addEventListener("click", handleRemoveWords);
+    els.removeWordsInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
             e.preventDefault();
             handleRemoveWords();
         }
     });
 
-    els.removeClearBtn.addEventListener('click', () => {
+    els.removeClearBtn.addEventListener("click", () => {
         state.removeWords = [];
         renderChips(els.removeWordsChips, state.removeWords, () => { });
     });
 
-    els.removeSubmitBtn.addEventListener('click', async () => {
+    els.removeSubmitBtn.addEventListener("click", async () => {
         if (!state.removeWords.length) {
-            log('No words queued to delete.', 'warn');
+            log("No words queued to delete.", "warn");
             return;
         }
         toggleBusy(true);
         try {
-            const res = await fetch(`${API_BASE}/delete`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ words: state.removeWords }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                log(`Delete failed: ${data.error || res.status}`, 'err');
-            } else {
-                const deleted = data.deleted || [];
-                const notFound = data.not_found || [];
-                log(`Delete: ${deleted.length} deleted, ${notFound.length} not found.`, 'ok');
-                state.removeWords = [];
-                renderChips(els.removeWordsChips, state.removeWords, () => { });
-                reloadTable();
-            }
+            const data = await apiClient.delete(
+                API_ENDPOINTS.USER_DICTIONARY.DELETE,
+                { words: state.removeWords }
+            );
+            const deleted = data.deleted || [];
+            const notFound = data.not_found || [];
+            log(
+                `Delete: ${deleted.length} deleted, ${notFound.length} not found.`,
+                "ok"
+            );
+            state.removeWords = [];
+            renderChips(els.removeWordsChips, state.removeWords, () => { });
+            reloadTable();
         } catch (err) {
-            log(`Delete error: ${err}`, 'err');
+            log(`Delete failed: ${err.message || err}`, "err");
         } finally {
             toggleBusy(false);
         }
     });
 }
 
-// ---------- Upload section ----------
+// -----------------------------
+// Upload section
+// -----------------------------
 function initUploadSection() {
-    els.uploadBtn.addEventListener('click', async () => {
+    els.uploadBtn.addEventListener("click", async () => {
         const file = els.fileInput.files[0];
         if (!file) {
-            log('Please select a .txt or .docx file.', 'warn');
+            log("Please select a .txt or .docx file.", "warn");
             return;
         }
-        const ext = file.name.toLowerCase().split('.').pop();
-        if (!['txt', 'docx'].includes(ext)) {
-            log('Invalid file type. Only .txt and .docx are allowed.', 'err');
+        const ext = file.name.toLowerCase().split(".").pop();
+        if (!["txt", "docx"].includes(ext)) {
+            log("Invalid file type. Only .txt and .docx are allowed.", "err");
             return;
         }
 
         toggleBusy(true);
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append("file", file);
         const addedBy = els.addedByInput.value.trim();
-        if (addedBy) formData.append('added_by', addedBy);
+        if (addedBy) formData.append("added_by", addedBy);
 
         try {
-            const res = await fetch(`${API_BASE}/upload-file`, {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                log(`Upload failed: ${data.error || res.status}`, 'err');
-                return;
-            }
+            // apiClient.post detects FormData and handles headers
+            const data = await apiClient.post(
+                `${BASE_URL}/api/v1/dictionary/user/upload-file`,
+                formData
+            );
 
             const {
                 file: fileName,
@@ -258,66 +257,64 @@ function initUploadSection() {
                 `${total_tokens} tokens, ${unique_words} unique, ` +
                 `${inserted.length} inserted, ${updated.length} updated, ` +
                 `${errors.length} errors.`,
-                'ok'
+                "ok"
             );
 
             const container = els.uploadResultCounts;
-            container.classList.remove('d-none');
-            container.innerHTML = '';
+            container.classList.remove("d-none");
+            container.innerHTML = "";
 
             const mkBadge = (label, value, klass) => {
-                const span = document.createElement('span');
+                const span = document.createElement("span");
                 span.className = `badge bg-${klass} me-1`;
                 span.textContent = `${label}: ${value}`;
                 return span;
             };
 
-            container.appendChild(mkBadge('Tokens', total_tokens, 'secondary'));
-            container.appendChild(mkBadge('Unique', unique_words, 'secondary'));
-            container.appendChild(mkBadge('Inserted', inserted.length, 'success'));
-            container.appendChild(mkBadge('Updated', updated.length, 'warning'));
-            container.appendChild(mkBadge('Skipped', skipped.length, 'info'));
-            container.appendChild(mkBadge('Errors', errors.length, 'danger'));
+            container.appendChild(mkBadge("Tokens", total_tokens, "secondary"));
+            container.appendChild(mkBadge("Unique", unique_words, "secondary"));
+            container.appendChild(mkBadge("Inserted", inserted.length, "success"));
+            container.appendChild(mkBadge("Updated", updated.length, "warning"));
+            container.appendChild(mkBadge("Skipped", skipped.length, "info"));
+            container.appendChild(mkBadge("Errors", errors.length, "danger"));
 
             reloadTable();
         } catch (err) {
-            log(`Upload error: ${err}`, 'err');
+            log(`Upload failed: ${err.message || err}`, "err");
         } finally {
             toggleBusy(false);
         }
     });
 }
 
-// ---------- DataTables server-side with search & selection ----------
-
+// -----------------------------
+// DataTables server-side
+// -----------------------------
 function initTable() {
-    state.table = $('#userWordsTable').DataTable({
+    state.table = $("#userWordsTable").DataTable({
         serverSide: true,
         processing: true,
         searching: false,
         ordering: false,
-        ajax: function (data, callback, settings) {
+        ajax: function (data, callback) {
             const offset = data.start || 0;
             const limit = data.length || 10;
             const search = els.tableSearchInput.value.trim();
 
-            const params = new URLSearchParams({
-                limit: String(limit),
-                offset: String(offset),
-            });
-            if (search) params.append('search', search);
+            const params = { limit, offset };
+            if (search) params.search = search;
 
-            fetch(`${API_BASE}/pending?${params.toString()}`)
-                .then(res => res.json())
-                .then(json => {
+            apiClient
+                .get(API_ENDPOINTS.USER_DICTIONARY.LIST_PENDING, params)
+                .then((json) => {
                     callback({
                         data: json.data || [],
                         recordsTotal: json.recordsTotal || 0,
                         recordsFiltered: json.recordsFiltered || json.recordsTotal || 0,
                     });
                 })
-                .catch(err => {
-                    log(`Table load error: ${err}`, 'err');
+                .catch((err) => {
+                    log(`Table load error: ${err.message || err}`, "err");
                     callback({
                         data: [],
                         recordsTotal: 0,
@@ -327,21 +324,21 @@ function initTable() {
         },
         columns: [
             {
-                data: 'word',
+                data: "word",
                 orderable: false,
                 searchable: false,
-                render: function (data, type, row) {
-                    const checked = state.selectedWords.has(data) ? 'checked' : '';
+                render: function (data) {
+                    const checked = state.selectedWords.has(data) ? "checked" : "";
                     return `<input type="checkbox" class="form-check-input row-select" value="${data}" ${checked}>`;
                 },
             },
-            { data: 'word' },
-            { data: 'added_by', defaultContent: '' },
-            { data: 'frequency' },
+            { data: "word" },
+            { data: "added_by", defaultContent: "" },
+            { data: "frequency" },
             {
-                data: 'created_at',
+                data: "created_at",
                 render: function (data) {
-                    if (!data) return '';
+                    if (!data) return "";
                     const d = new Date(data);
                     if (isNaN(d)) return data;
                     return d.toLocaleString();
@@ -353,7 +350,7 @@ function initTable() {
     });
 
     // Row checkbox click
-    $('#userWordsTable tbody').on('change', 'input.row-select', function () {
+    $("#userWordsTable tbody").on("change", "input.row-select", function () {
         const word = this.value;
         if (this.checked) {
             state.selectedWords.add(word);
@@ -364,9 +361,9 @@ function initTable() {
     });
 
     // Select all (current page)
-    els.selectAllRows.addEventListener('change', function () {
+    els.selectAllRows.addEventListener("change", function () {
         const checked = this.checked;
-        $('#userWordsTable tbody input.row-select').each(function () {
+        $("#userWordsTable tbody input.row-select").each(function () {
             this.checked = checked;
             const word = this.value;
             if (checked) {
@@ -378,13 +375,13 @@ function initTable() {
     });
 
     // Search button click
-    els.tableSearchBtn.addEventListener('click', () => {
+    els.tableSearchBtn.addEventListener("click", () => {
         reloadTable(true);
     });
 
     // Enter key in search box triggers search
-    els.tableSearchInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+    els.tableSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
             e.preventDefault();
             reloadTable(true);
         }
@@ -392,7 +389,7 @@ function initTable() {
 }
 
 function syncSelectAllCheckbox() {
-    const checkboxes = $('#userWordsTable tbody input.row-select');
+    const checkboxes = $("#userWordsTable tbody input.row-select");
     if (!checkboxes.length) {
         els.selectAllRows.checked = false;
         els.selectAllRows.indeterminate = false;
@@ -422,54 +419,54 @@ function reloadTable(resetPaging = false) {
     }
 }
 
-// ---------- Approve selected ----------
+// -----------------------------
+// Approve selected
+// -----------------------------
 function initApproveSelected() {
-    els.approveSelectedBtn.addEventListener('click', async () => {
+    els.approveSelectedBtn.addEventListener("click", async () => {
         const words = Array.from(state.selectedWords);
         if (!words.length) {
-            log('No rows selected for approval.', 'warn');
+            log("No rows selected for approval.", "warn");
             return;
         }
 
-        const admin_name = prompt('Enter admin name (optional):') || null;
+        const admin_name = prompt("Enter admin name (optional):") || null;
 
         toggleBusy(true);
         try {
-            const res = await fetch(`${API_BASE}/approve-selected`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ words, admin_name }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                log(`Approve failed: ${data.error || res.status}`, 'err');
-            } else {
-                const moved = data.moved || [];
-                const already = data.already_exists || [];
-                const notFound = data.not_found || [];
-                const failed = data.failed || [];
-                log(
-                    `Approve selected → moved: ${moved.length}, ` +
-                    `already exists: ${already.length}, ` +
-                    `not found: ${notFound.length}, ` +
-                    `failed: ${failed.length}.`,
-                    'ok'
-                );
-                moved.forEach(w => state.selectedWords.delete(w));
-                reloadTable(false);
-            }
+            const res = await apiClient.post(
+                `${BASE_URL}/api/v1/dictionary/user/approve-selected`,
+                { words, admin_name }
+            );
+            const moved = res.moved || [];
+            const already = res.already_exists || [];
+            const notFound = res.not_found || [];
+            const failed = res.failed || [];
+            log(
+                `Approve selected → moved: ${moved.length}, ` +
+                `already exists: ${already.length}, ` +
+                `not found: ${notFound.length}, ` +
+                `failed: ${failed.length}.`,
+                "ok"
+            );
+            moved.forEach((w) => state.selectedWords.delete(w));
+            reloadTable(false);
         } catch (err) {
-            log(`Approve error: ${err}`, 'err');
+            log(`Approve failed: ${err.message || err}`, "err");
         } finally {
             toggleBusy(false);
         }
     });
 }
+
+// -----------------------------
+// Delete selected (from table)
+// -----------------------------
 function initDeleteSelected() {
-    els.deleteSelectedBtn.addEventListener('click', async () => {
+    els.deleteSelectedBtn.addEventListener("click", async () => {
         const words = Array.from(state.selectedWords);
         if (!words.length) {
-            log('No rows selected for deletion.', 'warn');
+            log("No rows selected for deletion.", "warn");
             return;
         }
 
@@ -480,34 +477,30 @@ function initDeleteSelected() {
 
         toggleBusy(true);
         try {
-            const res = await fetch(`${API_BASE}/delete`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ words }),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                log(`Delete selected failed: ${data.error || res.status}`, 'err');
-            } else {
-                const deleted = data.deleted || [];
-                const notFound = data.not_found || [];
-                log(
-                    `Delete selected → deleted: ${deleted.length}, ` +
-                    `not found: ${notFound.length}.`,
-                    'ok'
-                );
-                deleted.forEach(w => state.selectedWords.delete(w));
-                reloadTable(false);
-            }
+            const data = await apiClient.delete(
+                API_ENDPOINTS.USER_DICTIONARY.DELETE,
+                { words }
+            );
+            const deleted = data.deleted || [];
+            const notFound = data.not_found || [];
+            log(
+                `Delete selected → deleted: ${deleted.length}, ` +
+                `not found: ${notFound.length}.`,
+                "ok"
+            );
+            deleted.forEach((w) => state.selectedWords.delete(w));
+            reloadTable(false);
         } catch (err) {
-            log(`Delete selected error: ${err}`, 'err');
+            log(`Delete selected failed: ${err.message || err}`, "err");
         } finally {
             toggleBusy(false);
         }
     });
 }
 
-// ---------- Init ----------
+// -----------------------------
+// Init
+// -----------------------------
 $(document).ready(function () {
     initAddSection();
     initDeleteSection();
@@ -515,6 +508,6 @@ $(document).ready(function () {
     initTable();
     initApproveSelected();
     initDeleteSelected();
-    els.refreshTableBtn.addEventListener('click', () => reloadTable(false));
-    log('UI loaded. Using API base: ' + API_BASE, 'info');
+    els.refreshTableBtn.addEventListener("click", () => reloadTable(false));
+    log("UI loaded. API base: " + BASE_URL, "info");
 });
