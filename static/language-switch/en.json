@@ -1,0 +1,52 @@
+{
+    "app": {
+        "title": "Kagapa Tools",
+        "subtitle": "A unified platform for internal and developer utility tools"
+    },
+    "nav": {
+        "home": "Home",
+        "tools": "All Tools",
+        "database": "Database",
+        "files": "File Utilities",
+        "logs": "Logs",
+        "admin": "Admin"
+    },
+    "hero": {
+        "title": "Kagapa Tools",
+        "description": "A centralized hub for powerful utility tools. Select a tool below and get your work done faster."
+    },
+    "tools": {
+        "section_title": "Available Tools",
+        "section_subtitle": "Select a utility below to get started",
+        "database": {
+            "title": "Database Manager",
+            "description": "Reset databases, manage tables, and handle migrations safely."
+        },
+        "files": {
+            "title": "File Utilities",
+            "description": "Upload, organize, process, and manage files efficiently."
+        },
+        "developer": {
+            "title": "Developer Tools",
+            "description": "Utilities for developers – validators, converters, and helpers."
+        },
+        "security": {
+            "title": "Security Tools",
+            "description": "Hashing, encoding, and security-related utilities."
+        },
+        "data": {
+            "title": "Data Utilities",
+            "description": "Analyze, clean, and transform datasets easily."
+        },
+        "more": {
+            "title": "All Tools",
+            "description": "View and access all available and upcoming utilities."
+        }
+    },
+    "common": {
+        "open_tool": "Open Tool",
+        "view_all": "View All",
+        "loading": "Loading...",
+        "error": "Something went wrong"
+    }
+}

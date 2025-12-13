@@ -10,8 +10,8 @@ load_dotenv()
 
 logger = setup_logger('dbinit')
 
-# Flask-SQLAlchemy instance
-db = SQLAlchemy()
+# Flask-SQLAlchemy instance (renamed to avoid conflicts)
+kagapa_tools_db = SQLAlchemy()
 
 # Environment variables
 DB_USER = os.getenv("DB_USER")
@@ -62,6 +62,6 @@ def init_db(app):
     app.config["SQLALCHEMY_DATABASE_URI"] = MYSQL_DB_URL
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    db.init_app(app)
+    kagapa_tools_db.init_app(app)
 
     logger.info("Database initialized with PyMySQL")

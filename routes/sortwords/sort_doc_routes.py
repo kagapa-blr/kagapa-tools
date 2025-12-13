@@ -4,7 +4,7 @@ import uuid
 from flask import Blueprint, request, jsonify, render_template, send_file
 from utils.word_sort_tools import extract_words_from_file, sort_lowest_highest_words, create_csv
 
-sort_doc_bp = Blueprint("sort_doc", __name__, url_prefix="/sort-doc")
+sort_doc_bp = Blueprint("sort_doc", __name__)
 
 RESULT_FOLDER = "sorted_results"
 os.makedirs(RESULT_FOLDER, exist_ok=True)

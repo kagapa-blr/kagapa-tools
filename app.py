@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, render_template
 from config.database import init_db
 from routes.sortwords.sort_doc_routes import sort_doc_bp
 from utils.logger import setup_logger
@@ -32,8 +32,15 @@ logger.info("Database initialized successfully")
 # -------------------------
 # Register Blueprints
 # -------------------------
-app.register_blueprint(sort_doc_bp)
+app.register_blueprint(sort_doc_bp, url_prefix="/sort-doc")
 logger.info("Blueprint registered: sort_doc_bp")
+
+
+
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 # -------------------------
 # Run App
