@@ -4,10 +4,42 @@
 const getAccessToken = () => localStorage.getItem("access_token");
 const clearAccessToken = () => localStorage.removeItem("access_token");
 
+// -----------------------------
 // Default headers
+// -----------------------------
 const defaultHeaders = {
     "Content-Type": "application/json"
 };
+
+
+
+const base64UrlDecode = (str) => {
+    try {
+        // base64url -> base64
+        str = str.replace(/-/g, "+").replace(/_/g, "/");
+        // pad with '='
+        const pad = str.length % 4;
+        if (pad) str += "=".repeat(4 - pad);
+        return atob(str);
+    } catch (e) {
+        return null;
+    }
+};
+
+const getJwtPayload = () => {
+    const token = getAccessToken();
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const decoded = base64UrlDecode(parts[1]);
+    if (!decoded) return null;
+    try {
+        return JSON.parse(decoded);
+    } catch (e) {
+        return null;
+    }
+};
+
 
 // -----------------------------
 // Main fetch wrapper
@@ -29,25 +61,29 @@ const apiClient = {
         };
 
         // -----------------------------
-        // Attach JWT via Authorization header
+        // Attach JWT via Authorization header if available
         // -----------------------------
         const token = getAccessToken();
         if (token && !options.headers["Authorization"]) {
             options.headers["Authorization"] = `Bearer ${token}`;
+
         }
 
         // -----------------------------
-        // Request body
+        // Handle request body
         // -----------------------------
         if (body && method.toUpperCase() !== "GET") {
             if (body instanceof FormData) {
                 options.body = body;
-                delete options.headers["Content-Type"]; // let browser handle multipart
+                delete options.headers["Content-Type"]; // browser sets correct multipart type
             } else {
                 options.body = JSON.stringify(body);
             }
         }
 
+        // -----------------------------
+        // Fetch request
+        // -----------------------------
         const response = await fetch(url.toString(), options);
 
         // -----------------------------
@@ -62,12 +98,10 @@ const apiClient = {
         }
 
         // -----------------------------
-        // Handle auth failures
+        // Handle unauthorized
         // -----------------------------
         if (response.status === 401) {
             clearAccessToken(); // clear token if invalid/expired
-            // Optional: redirect to login
-            // window.location.href = "/login";
         }
 
         // -----------------------------
@@ -103,3 +137,5 @@ const apiClient = {
 };
 
 export default apiClient;
+export { getJwtPayload, getAccessToken, clearAccessToken };
+

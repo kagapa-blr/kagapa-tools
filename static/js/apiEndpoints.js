@@ -1,5 +1,5 @@
 // Base URL for all API calls
-export const BASE_URL = "http://127.0.0.1:5000/api";
+export const BASE_URL = "http://127.0.0.1:5000";
 
 // -----------------------------
 // API Endpoints
@@ -19,9 +19,9 @@ const API_ENDPOINTS = {
         ACTIVATE: (userId) => `${BASE_URL}/manage_users/${userId}/activate`,
     },
 
-    TOOLS: {
+    SORT_DOC: {
         SORT_DOC: `${BASE_URL}/sort-doc`,
-        // Add other tools endpoints here
+        UPLOAD_FILE: `${BASE_URL}/sort-doc/api/upload`,
     },
 
     // Add more modules/endpoints here as needed

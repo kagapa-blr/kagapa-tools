@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from flask import Flask, render_template
 from config.database import init_db, create_tables
 from routes.manage_users.manage_users import manage_users_bp
-from routes.manage_users.user_login import  user_login_bp
+from routes.manage_users.user_login import user_login_bp
 from routes.sortwords.sort_doc_routes import sort_doc_bp
 from utils.logger import setup_logger
 
