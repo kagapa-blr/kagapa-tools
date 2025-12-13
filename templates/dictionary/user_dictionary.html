@@ -175,16 +175,28 @@
             <div>
               <strong>Pending user words</strong>
             </div>
+
             <div class="d-flex flex-wrap gap-2">
-              <input type="text" id="tableSearchInput" class="form-control form-control-sm"
-                placeholder="Search word / added_by" style="width: 220px;">
+              <div class="input-group input-group-sm" style="width: 260px;">
+                <input type="text" id="tableSearchInput" class="form-control" placeholder="Search word / added_by">
+                <button id="tableSearchBtn" class="btn btn-outline-primary">
+                  Search
+                </button>
+              </div>
+
               <button id="approveSelectedBtn" class="btn btn-success btn-sm">
                 Approve selected
+              </button>
+              <button id="deleteSelectedBtn" class="btn btn-danger btn-sm">
+                Delete selected
               </button>
               <button id="refreshTableBtn" class="btn btn-outline-secondary btn-sm">
                 Refresh
               </button>
             </div>
+
+
+
           </div>
           <div class="card-body">
             <table id="userWordsTable" class="table table-striped table-sm align-middle" style="width: 100%;">

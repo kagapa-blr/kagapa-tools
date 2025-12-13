@@ -31,6 +31,8 @@ const els = {
     approveSelectedBtn: document.getElementById('approveSelectedBtn'),
     tableSearchInput: document.getElementById('tableSearchInput'),
     selectAllRows: document.getElementById('selectAllRows'),
+    tableSearchBtn: document.getElementById('tableSearchBtn'),
+    deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
 };
 
 // ---------- Helpers ----------
@@ -85,6 +87,8 @@ function toggleBusy(disabled) {
         els.uploadBtn,
         els.refreshTableBtn,
         els.approveSelectedBtn,
+        els.deleteSelectedBtn,
+        els.tableSearchBtn,
     ].forEach(btn => {
         if (btn) btn.disabled = disabled;
     });
@@ -285,11 +289,12 @@ function initUploadSection() {
 }
 
 // ---------- DataTables server-side with search & selection ----------
+
 function initTable() {
     state.table = $('#userWordsTable').DataTable({
         serverSide: true,
         processing: true,
-        searching: false,    // custom search input
+        searching: false,
         ordering: false,
         ajax: function (data, callback, settings) {
             const offset = data.start || 0;
@@ -372,13 +377,17 @@ function initTable() {
         });
     });
 
-    // Custom search with debounce
-    let searchTimeout = null;
-    els.tableSearchInput.addEventListener('input', () => {
-        if (searchTimeout) clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
+    // Search button click
+    els.tableSearchBtn.addEventListener('click', () => {
+        reloadTable(true);
+    });
+
+    // Enter key in search box triggers search
+    els.tableSearchInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
             reloadTable(true);
-        }, 400);
+        }
     });
 }
 
@@ -456,6 +465,47 @@ function initApproveSelected() {
         }
     });
 }
+function initDeleteSelected() {
+    els.deleteSelectedBtn.addEventListener('click', async () => {
+        const words = Array.from(state.selectedWords);
+        if (!words.length) {
+            log('No rows selected for deletion.', 'warn');
+            return;
+        }
+
+        const confirmDelete = confirm(
+            `Delete ${words.length} word(s) from user dictionary?`
+        );
+        if (!confirmDelete) return;
+
+        toggleBusy(true);
+        try {
+            const res = await fetch(`${API_BASE}/delete`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ words }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                log(`Delete selected failed: ${data.error || res.status}`, 'err');
+            } else {
+                const deleted = data.deleted || [];
+                const notFound = data.not_found || [];
+                log(
+                    `Delete selected → deleted: ${deleted.length}, ` +
+                    `not found: ${notFound.length}.`,
+                    'ok'
+                );
+                deleted.forEach(w => state.selectedWords.delete(w));
+                reloadTable(false);
+            }
+        } catch (err) {
+            log(`Delete selected error: ${err}`, 'err');
+        } finally {
+            toggleBusy(false);
+        }
+    });
+}
 
 // ---------- Init ----------
 $(document).ready(function () {
@@ -464,6 +514,7 @@ $(document).ready(function () {
     initUploadSection();
     initTable();
     initApproveSelected();
+    initDeleteSelected();
     els.refreshTableBtn.addEventListener('click', () => reloadTable(false));
     log('UI loaded. Using API base: ' + API_BASE, 'info');
 });
