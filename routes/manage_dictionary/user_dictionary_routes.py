@@ -1,26 +1,38 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
+from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 
-from services.dictionary_manager.user_dictionary_service import UserDictionaryService
-
+from models.spellcheck import UserAddedWord
+from services.dictionary_manager.user_dictionary_service import (
+    UserDictionaryService,
+    UserDictionaryBulkUploadService,
+    ALLOWED_UPLOAD_EXTENSIONS,
+)
 from utils.logger import setup_logger
 
 logger = setup_logger(name="UserDictionaryRoutes")
 
 user_dictionary_bp = Blueprint(
     "user_dictionary",
-    __name__
+    __name__,
+    url_prefix="/api/v1/dictionary/user",  # adjust if needed
 )
-
-ALLOWED_EXTENSIONS = {".txt", ".docx"}
 
 
 def _get_ext(filename: str) -> str:
-    filename = filename.lower()
-    for ext in ALLOWED_EXTENSIONS:
+    """
+    Return allowed extension ('.txt' / '.docx') or ''.
+    """
+    filename = (filename or "").lower()
+    for ext in ALLOWED_UPLOAD_EXTENSIONS:
         if filename.endswith(ext):
             return ext
     return ""
+
+
+@user_dictionary_bp.route("/dashboard", methods=["GET"])
+def user_dictionary_dashboard():
+    return render_template("dictionary/user_dictionary.html")
 
 
 # -------------------------------------------------
@@ -39,24 +51,83 @@ def add_user_words():
     return jsonify(result), 201
 
 
-# -------------------------------------------------
-# LIST PENDING WORDS
-# -------------------------------------------------
+# # -------------------------------------------------
+# # LIST PENDING WORDS
+# # -------------------------------------------------
+# @user_dictionary_bp.route("/pending", methods=["GET"])
+# def list_pending_words():
+#     limit = int(request.args.get("limit", 100))
+#     offset = int(request.args.get("offset", 0))
+#
+#     words = UserDictionaryService.list_pending(limit, offset)
+#     return jsonify([
+#         {
+#             "word": w.word,
+#             "added_by": w.added_by,
+#             "frequency": w.frequency,
+#             "created_at": w.created_at.isoformat()
+#         } for w in words
+#     ])
+#
+
+
+
+
 @user_dictionary_bp.route("/pending", methods=["GET"])
 def list_pending_words():
-    limit = int(request.args.get("limit", 100))
-    offset = int(request.args.get("offset", 0))
+    """
+    Server-side pagination + search for DataTables.
 
-    words = UserDictionaryService.list_pending(limit, offset)
-    return jsonify([
+    Query params:
+      - limit: page size
+      - offset: start index
+      - search: optional search term (applied to word and added_by)
+    """
+    try:
+        limit = int(request.args.get("limit", 10))
+        offset = int(request.args.get("offset", 0))
+    except ValueError:
+        limit = 10
+        offset = 0
+
+    search_term = (request.args.get("search") or "").strip()
+
+    base_q = UserAddedWord.query.filter_by(verified=False)
+
+    if search_term:
+        like_term = f"%{search_term}%"
+        base_q = base_q.filter(
+            or_(
+                UserAddedWord.word.ilike(like_term),
+                UserAddedWord.added_by.ilike(like_term),
+            )
+        )
+
+    total_pending = UserAddedWord.query.filter_by(verified=False).count()
+    filtered_count = base_q.count()
+
+    words = (
+        base_q
+        .order_by(UserAddedWord.created_at.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    data = [
         {
             "word": w.word,
             "added_by": w.added_by,
             "frequency": w.frequency,
             "created_at": w.created_at.isoformat()
         } for w in words
-    ])
+    ]
 
+    return jsonify({
+        "data": data,
+        "recordsTotal": total_pending,
+        "recordsFiltered": filtered_count,
+    })
 
 # -------------------------------------------------
 # DELETE USER WORD(S)
@@ -109,19 +180,46 @@ def upload_user_dictionary_file():
     if not file or file.filename == "":
         return jsonify({"error": "no file selected"}), 400
 
-    ext = _get_ext(file.filename)
+    original_name = file.filename
+    original_lower = (original_name or "").lower()
+
+    # Use original filename for extension detection (Unicode safe)
+    ext = ""
+    for allowed in ALLOWED_UPLOAD_EXTENSIONS:
+        if original_lower.endswith(allowed):
+            ext = allowed
+            break
+
     if not ext:
         return jsonify({"error": "only .txt and .docx files are allowed"}), 400
 
-    safe_name = secure_filename(file.filename)
+    # Build a safe basename but KEEP the real extension (with dot)
+    if "." in original_name:
+        base_part = original_name.rsplit(".", 1)[0]
+    else:
+        base_part = original_name
 
-    # If you have auth, replace this with the actual user name/id
+    safe_base = secure_filename(base_part) or "upload"
+    safe_name = f"{safe_base}{ext}"
+
+    logger.info(
+        f"Received upload: original={original_name!r}, "
+        f"ext={ext!r}, safe={safe_name!r}"
+    )
+
     added_by = request.form.get("added_by")
 
-    result = UserDictionaryBulkUploadService.process_file(
-        file_obj=file,
-        filename=safe_name,
-        added_by=added_by,
-    )
+    try:
+        result = UserDictionaryBulkUploadService.process_file(
+            file_obj=file,
+            filename=safe_name,  # now e.g. "upload.docx"
+            added_by=added_by,
+        )
+    except ValueError as e:
+        logger.error(f"Upload validation error: {e}")
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.exception(f"Unexpected error while processing upload: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
     return jsonify(result), 200

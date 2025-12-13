@@ -1,8 +1,9 @@
-from collections import Counter
 import io
 import re
-from sqlalchemy.exc import IntegrityError
+from collections import Counter
+
 from docx import Document  # python-docx
+from sqlalchemy.exc import IntegrityError
 
 from config.database import kagapa_tools_db as db
 from models.spellcheck import UserAddedWord
@@ -14,7 +15,6 @@ logger = setup_logger(name="UserDictionaryService")
 
 
 class UserDictionaryService:
-
     # -------------------------------------------------
     # ADD (single OR bulk)
     # -------------------------------------------------
@@ -152,6 +152,9 @@ class UserDictionaryService:
 # 📄 BULK UPLOAD SERVICE – .txt / .docx → WORDS + FREQUENCY → USER TABLE
 # =====================================================================
 
+ALLOWED_UPLOAD_EXTENSIONS = (".txt", ".docx")
+
+
 class UserDictionaryBulkUploadService:
     """
     Service to process uploaded documents (.txt, .docx),
@@ -233,26 +236,19 @@ class UserDictionaryBulkUploadService:
         """
         Decide reader based on filename extension, extract text, compute
         frequencies, and upsert into UserAddedWord.
-
-        Returns:
-        {
-          "file": "name.docx",
-          "total_tokens": int,
-          "unique_words": int,
-          "inserted": [...],
-          "updated": [...],
-          "skipped": [...],
-          "errors": [{ "word": ..., "error": "..." }]
-        }
         """
         filename_lower = (filename or "").lower()
+        logger.info(f"Processing uploaded file: {filename_lower!r}")
+
+        if not filename_lower.endswith(ALLOWED_UPLOAD_EXTENSIONS):
+            raise ValueError(
+                f"Unsupported file type: {filename!r}. Only .txt and .docx are allowed."
+            )
 
         if filename_lower.endswith(".txt"):
             text = cls._extract_text_from_txt(file_obj)
-        elif filename_lower.endswith(".docx"):
-            text = cls._extract_text_from_docx(file_obj)
         else:
-            raise ValueError("Unsupported file type. Only .txt and .docx are allowed.")
+            text = cls._extract_text_from_docx(file_obj)
 
         tokens = cls._tokenize_and_normalize(text)
         freq_map = Counter(tokens)
@@ -300,7 +296,7 @@ class UserDictionaryBulkUploadService:
                 result["errors"].append({"word": word, "error": str(e)})
 
         logger.info(
-            f"Processed uploaded file '{filename}' - > "
+            f"Processed uploaded file '{filename}' -> "
             f"{result['total_tokens']} tokens, "
             f"{result['unique_words']} unique, "
             f"{len(result['inserted'])} inserted, "
