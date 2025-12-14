@@ -8,6 +8,7 @@ from app.routes.manage_dictionary.user_dictionary_routes import user_dictionary_
 from app.routes.manage_users.manage_users import manage_users_bp
 from app.routes.manage_users.user_login import user_login_bp
 from app.routes.sortwords.sort_doc_routes import sort_doc_bp
+from app.routes.web_ui_routes.template_routes import template_routes_bp
 from app.utils.logger import setup_logger
 
 # --------------------------------------------------
@@ -54,31 +55,22 @@ logger.info(f"UPLOAD_DIR   = {UPLOAD_DIR}")
 init_db(app)
 logger.info("Database initialized successfully")
 
-
 # --------------------------------------------------
 # Register Blueprints
 # --------------------------------------------------
 # UI / Web
-app.register_blueprint(sort_doc_bp, url_prefix="/sort-doc")
-app.register_blueprint(manage_users_bp, url_prefix="/users")
+app.register_blueprint(template_routes_bp, url_prefix="/")
 
 # Auth / APIs
 app.register_blueprint(user_login_bp, url_prefix="/api/auth")
 app.register_blueprint(main_dictionary_bp, url_prefix="/api/v1/dictionary/main")
 app.register_blueprint(user_dictionary_bp, url_prefix="/api/v1/dictionary/user")
-
 logger.info("All blueprints registered successfully")
 
-# --------------------------------------------------
-# Routes
-# --------------------------------------------------
-@app.route("/")
-def home():
-    return render_template("index.html")
 
 # --------------------------------------------------
 # App Runner
 # --------------------------------------------------
 if __name__ == "__main__":
     logger.info("Starting Kagapa Utility Tools Web App")
-    app.run(host="0.0.0.0",port=5000,debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False)

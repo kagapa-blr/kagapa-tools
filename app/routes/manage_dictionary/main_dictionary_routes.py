@@ -12,11 +12,6 @@ main_dictionary_bp = Blueprint(
 
 
 
-@main_dictionary_bp.route("/dashboard", methods=["GET"])
-def main_dictionary_dashboard():
-    return render_template("dictionary/main_dictionary.html")
-
-
 # -------------------------------------------------
 # ADD WORD(S) – single or bulk
 # -------------------------------------------------

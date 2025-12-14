@@ -6,9 +6,6 @@ from app.services.sortwords.sort_doc_service import allowed_file, process_upload
 sort_doc_bp = Blueprint("sort_doc", __name__)
 
 
-@sort_doc_bp.route("/", methods=["GET"])
-def sort_doc_ui():
-    return render_template("sortwords/upload_sort.html")
 
 
 @sort_doc_bp.route("/api/upload", methods=["POST"])
