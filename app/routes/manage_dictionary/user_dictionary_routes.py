@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 
 from app.models.spellcheck import UserAddedWord
+from app.security.jwt_decorators import login_required
 from app.services.dictionary_manager.user_dictionary_service import (
     UserDictionaryService,
     UserDictionaryBulkUploadService,
@@ -51,29 +52,9 @@ def add_user_words():
     return jsonify(result), 201
 
 
-# # -------------------------------------------------
-# # LIST PENDING WORDS
-# # -------------------------------------------------
-# @user_dictionary_bp.route("/pending", methods=["GET"])
-# def list_pending_words():
-#     limit = int(request.args.get("limit", 100))
-#     offset = int(request.args.get("offset", 0))
-#
-#     words = UserDictionaryService.list_pending(limit, offset)
-#     return jsonify([
-#         {
-#             "word": w.word,
-#             "added_by": w.added_by,
-#             "frequency": w.frequency,
-#             "created_at": w.created_at.isoformat()
-#         } for w in words
-#     ])
-#
-
-
-
 
 @user_dictionary_bp.route("/pending", methods=["GET"])
+@login_required
 def list_pending_words():
     """
     Server-side pagination + search for DataTables.
@@ -133,6 +114,7 @@ def list_pending_words():
 # DELETE USER WORD(S)
 # -------------------------------------------------
 @user_dictionary_bp.route("/delete", methods=["DELETE"])
+@login_required
 def delete_user_words():
     data = request.get_json() or {}
     words = data.get("words") or data.get("word")
@@ -147,7 +129,9 @@ def delete_user_words():
 # -------------------------------------------------
 # 🔥 ADMIN APPROVAL – MOVE TO MAIN DICTIONARY (bulk)
 # -------------------------------------------------
+
 @user_dictionary_bp.route("/approve", methods=["POST"])
+@login_required
 def approve_words():
     data = request.get_json() or {}
     words = data.get("words") or data.get("word")
@@ -167,6 +151,7 @@ def approve_words():
 # 📄 FILE UPLOAD → EXTRACT WORDS & UPDATE FREQUENCY
 # -------------------------------------------------
 @user_dictionary_bp.route("/upload-file", methods=["POST"])
+@login_required
 def upload_user_dictionary_file():
     """
     Accepts a .txt or .docx file, extracts text, cleans words,

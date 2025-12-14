@@ -435,7 +435,7 @@ function initApproveSelected() {
         toggleBusy(true);
         try {
             const res = await apiClient.post(
-                `${BASE_URL}/api/v1/dictionary/user/approve-selected`,
+                API_ENDPOINTS.USER_DICTIONARY.APPROVE,
                 { words, admin_name }
             );
             const moved = res.moved || [];
