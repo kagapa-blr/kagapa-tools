@@ -53,14 +53,38 @@ class MainDictionaryService:
         ).first()
 
     @staticmethod
-    def get_all(limit: int = 100, offset: int = 0):
-        return (
-            MainDictionary.query
+    def get_all(
+            limit: int = 100,
+            offset: int = 0,
+            search: str | None = None
+    ):
+        base_query = MainDictionary.query
+
+        # Total records (without search)
+        total_records = base_query.count()
+
+        # Apply search filter if provided
+        if search:
+            base_query = base_query.filter(
+                MainDictionary.word.ilike(f"%{search}%")
+            )
+
+        # Records after filtering
+        filtered_records = base_query.count()
+
+        data = (
+            base_query
             .order_by(MainDictionary.frequency.desc())
             .offset(offset)
             .limit(limit)
             .all()
         )
+
+        return {
+            "total": total_records,
+            "filtered": filtered_records,
+            "data": data
+        }
 
     # -------------------------------------------------
     # UPDATE

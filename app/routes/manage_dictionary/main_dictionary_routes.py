@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 
 from app.services.dictionary_manager.main_dictionary_service import MainDictionaryService
 from app.utils.logger import setup_logger
@@ -9,6 +9,12 @@ main_dictionary_bp = Blueprint(
     "main_dictionary",
     __name__
 )
+
+
+
+@main_dictionary_bp.route("/dashboard", methods=["GET"])
+def main_dictionary_dashboard():
+    return render_template("dictionary/main_dictionary.html")
 
 
 # -------------------------------------------------
@@ -47,18 +53,39 @@ def get_word(word):
 # -------------------------------------------------
 # LIST WORDS
 # -------------------------------------------------
+# -------------------------------------------------
+# LIST WORDS (DataTables Server-Side)
+# -------------------------------------------------
 @main_dictionary_bp.route("/list", methods=["GET"])
 def list_words():
-    limit = int(request.args.get("limit", 100))
-    offset = int(request.args.get("offset", 0))
+    draw = int(request.args.get("draw", 1))
+    limit = int(request.args.get("length", 25))
+    offset = int(request.args.get("start", 0))
+    search_value = request.args.get("search[value]", "")
 
-    words = MainDictionaryService.get_all(limit, offset)
-    return jsonify([
-        {
-            "word": w.word,
-            "frequency": w.frequency
-        } for w in words
-    ])
+    # Get search from mainTableSearchInput (custom param)
+    search = request.args.get("search", search_value)
+
+    result = MainDictionaryService.get_all(
+        limit=limit,
+        offset=offset,
+        search=search
+    )
+
+    return jsonify({
+        "draw": draw,
+        "recordsTotal": result["total"],
+        "recordsFiltered": result["filtered"],
+        "data": [
+            {
+                "word": w.word,
+                "frequency": w.frequency,
+                "added_by": w.added_by or "system",
+                "added": w.created_at.strftime("%Y-%m-%d %H:%M") if w.created_at else "N/A"
+            }
+            for w in result["data"]
+        ]
+    })
 
 
 # -------------------------------------------------

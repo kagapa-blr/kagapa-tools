@@ -56,6 +56,14 @@ const API_ENDPOINTS = {
         APPROVE: `${BASE_URL}/api/v1/dictionary/user/approve`,
         DELETE: `${BASE_URL}/api/v1/dictionary/user/delete`,
     },
+    // Add to your API_ENDPOINTS
+    MAIN_DICTIONARY: {
+        BASE: `${BASE_URL}/api/v1/dictionary/main`,
+        ADD: `${BASE_URL}/api/v1/dictionary/main/add`,
+        DELETE: `${BASE_URL}/api/v1/dictionary/main/delete`,
+        LIST: `${BASE_URL}/api/v1/dictionary/main/list`
+    }
+
 
     // -----------------------------
     // Add more modules/endpoints here
