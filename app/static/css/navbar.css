@@ -1,0 +1,48 @@
+/* Navbar Brand */
+.navbar-brand span {
+  font-size: 1.4rem;
+  line-height: 1.2;
+}
+
+.navbar-brand small {
+  font-size: 0.8rem;
+}
+
+/* Navbar Links */
+.navbar-nav .nav-link {
+  font-weight: 500;
+  transition: color 0.2s, background 0.2s;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.navbar-nav .nav-link:hover {
+  color: #ffffff;
+  background-color: #4b49ac;
+  border-radius: 0.35rem;
+}
+
+/* Active Nav Link */
+.navbar-nav .nav-link.active {
+  color: #ffffff !important;
+  background-color: #4b49ac !important;
+  border-radius: 0.35rem;
+}
+
+/* Language Buttons */
+.btn[data-lang-btn] {
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn[data-lang-btn].active {
+  background-color: #4b49ac;
+  color: #ffffff;
+  border-color: #4b49ac;
+}
+
+.btn[data-lang-btn]:not(.active):hover {
+  background-color: #ffffff;
+  color: #000;
+  border-color: #ffffff;
+}

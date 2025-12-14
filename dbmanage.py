@@ -1,10 +1,13 @@
 import os
 from dotenv import load_dotenv
-from config.database import db, create_database_if_not_exists, MYSQL_DB_URL, MYSQL_SERVER_URL
-from sqlalchemy import create_engine, inspect, MetaData, Table
-from sqlalchemy.exc import SQLAlchemyError
-from utils.logger import setup_logger
+from sqlalchemy import create_engine, MetaData, Table, inspect
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.config.database import create_database_if_not_exists, MYSQL_DB_URL, MYSQL_SERVER_URL
+from app.config.database import kagapa_tools_db as db
+from app.utils.logger import setup_logger
+
 # Load env vars
 load_dotenv()
 logger = setup_logger('dbmanage')
@@ -23,14 +26,12 @@ def reset_database():
         return
 
     try:
-        # Drop database
         engine = create_engine(MYSQL_SERVER_URL)
         with engine.connect() as conn:
             conn.execution_options(isolation_level="AUTOCOMMIT")
             conn.execute(text(f"DROP DATABASE IF EXISTS `{os.getenv('DB_NAME')}`"))
             logger.info(f"Database {os.getenv('DB_NAME')} dropped.")
 
-        # Recreate database
         create_database_if_not_exists()
         logger.info(f"Database {os.getenv('DB_NAME')} recreated successfully.")
 
@@ -39,26 +40,27 @@ def reset_database():
 
 
 def reset_tables():
-    """Reset specific tables."""
+    """Reset specific tables automatically from models."""
     engine = create_engine(MYSQL_DB_URL)
-    metadata = MetaData()
-    metadata.reflect(bind=engine)
-    table_names = list(metadata.tables.keys())
 
-    if not table_names:
+    # Get current tables in DB
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+
+    if not existing_tables:
         print("No tables found in database.")
         return
 
     # Show tables
     print("\nTables in the database:")
-    for i, t in enumerate(table_names, start=1):
+    for i, t in enumerate(existing_tables, start=1):
         print(f"{i}. {t}")
 
     # Get user selection
     selection = input("\nEnter table numbers to reset (comma-separated, e.g., 1,3,5): ")
     try:
         indices = [int(x.strip()) - 1 for x in selection.split(",")]
-        tables_to_reset = [table_names[i] for i in indices if 0 <= i < len(table_names)]
+        tables_to_reset = [existing_tables[i] for i in indices if 0 <= i < len(existing_tables)]
     except (ValueError, IndexError):
         print("Invalid selection.")
         return
@@ -74,17 +76,20 @@ def reset_tables():
         return
 
     try:
+        # Drop selected tables
         with engine.connect() as conn:
             for table_name in tables_to_reset:
-                conn.execute(f"DROP TABLE IF EXISTS `{table_name}`")
+                conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
                 logger.info(f"Table {table_name} dropped.")
 
-        # Recreate tables using SQLAlchemy metadata
-        # Only recreate selected tables
-        metadata = MetaData()
-        metadata.reflect(bind=engine, only=tables_to_reset)
-        db.metadata.create_all(bind=engine, tables=[Table(t, db.metadata) for t in tables_to_reset])
-        logger.info(f"Selected tables recreated successfully.")
+        # Recreate tables automatically using model metadata
+        tables_to_create = [t for t in db.metadata.sorted_tables if t.name in tables_to_reset]
+
+        if tables_to_create:
+            db.metadata.create_all(bind=engine, tables=tables_to_create)
+            logger.info(f"Selected tables recreated successfully.")
+        else:
+            logger.warning("No tables found in metadata to recreate.")
 
     except SQLAlchemyError as e:
         logger.error("Error resetting tables", exc_info=e)

@@ -70,12 +70,13 @@ SECRET_KEY=your_secret_key
 ## Running the Application
 
 ```bash
-python app.py
+python run.py
 ```
 
 - App runs at `http://localhost:5000/`
-- Upload folder: `uploads/`
-- Templates folder: `templates/`
+- Upload folder: `user_uploaded/`
+- Templates folder: `app/templates/`
+- Static folder: `app/static/`
 - Logs folder: `logs/` (archived automatically after 10 days)
 
 ---
@@ -95,55 +96,32 @@ python dbmanage.py
 
 Options:
 
-1. Reset entire database
-2. Reset specific tables
+1. Reset entire database  
+2. Reset specific tables  
 
 - Confirms before performing destructive operations
 
 ---
 
-## Alembic Workflow Steps
-
-### 1. Make Changes
-
-- Add new models or modify existing models in the `models/` folder.
-- Update fields, add/remove columns, tables, or indexes.
-
-### 2. Generate Migration
+## Alembic Workflow
 
 ```bash
-alembic revision --autogenerate -m "descriptive_message"
+# Initialize Alembic, create migrations, and apply them in one place
+alembic init alembic         # Initialize Alembic folder and config
+alembic revision --autogenerate -m "descriptive_message"  # Generate migration from models
+alembic upgrade head         # Apply all pending migrations
+alembic history --verbose    # Show migration history
+alembic current              # Show current revision
+alembic stamp head           # Synchronize Alembic version without applying changes
+alembic revision -m "manual changes"  # Create empty migration for manual edits
 ```
-- Use descriptive messages such as `add_user_table` or `update_users_email_index`.
-- Review the generated migration file in `alembic/versions/` before applying.
-
-### 3. Apply Migration
-
-```bash
-alembic upgrade head
-```
-- Applies all pending migrations to update the database schema.
-
-### 4. Verify
-
-```bash
-alembic current   # Check current revision
-alembic history   # Review applied migrations
-```
-- Ensure the database schema matches your models.
-
-### 5. Optional: Synchronize Alembic Version
-
-```bash
-alembic stamp head
-```
-- Use if the database was manually changed or restored from backup.
-- Marks the database as up-to-date without modifying any tables.
 
 **Tips:**
-- Always review migration files before applying.
-- Test migrations in a development database first.
-- Keep `target_metadata = db.Model.metadata` updated in `alembic/env.py`.
+
+- Always review migration files before applying
+- Test migrations in a development database first
+- Keep `target_metadata = db.Model.metadata` updated in `alembic/env.py`
+- Alembic dynamically imports all models from `app.models`
 
 ---
 
@@ -159,26 +137,33 @@ alembic stamp head
 
 ```
 kagapa-tools/
-├─ alembic/                 # Alembic migrations
-├─ config/
-│  └─ database.py           # Database initialization & helpers
-├─ routes/                  # Flask blueprints
-│  └─ sortwords/
-├─ utils/
-│  └─ logger.py             # Logging setup
-├─ uploads/                 # Uploaded files
-├─ templates/               # HTML templates
-├─ static/                  # Static files
-├─ app.py                   # Flask application
-├─ dbmanage.py              # Interactive database manager
+├─ alembic/                  # Alembic migrations
+│  └─ versions/              # Migration scripts
+├─ app/
+│  ├─ config/
+│  │  └─ database.py         # Database initialization & helpers
+│  ├─ routes/                # Flask blueprints
+│  │  └─ sortwords/
+│  ├─ models/                # SQLAlchemy models
+│  ├─ utils/
+│  │  └─ logger.py           # Logging setup
+│  ├─ templates/             # HTML templates
+│  ├─ static/                # Static files
+│  └─ __init__.py
+├─ user_uploaded/            # Uploaded files
+├─ logs/                     # Log files and archives
+├─ run.py                    # Flask application runner
+├─ dbmanage.py               # Interactive database manager
 ├─ requirements.txt
-└─ .env                     # Environment variables
+└─ .env                      # Environment variables
 ```
 
 ---
 
 ## Notes
 
-- Ensure `.env` contains correct database credentials before running migrations or DB manager.
-- Use Alembic for schema changes instead of manual SQL.
-- Always backup your database before performing destructive operations.
+- Ensure `.env` contains correct database credentials before running migrations or DB manager
+- Use Alembic for schema changes instead of manual SQL
+- Always backup your database before performing destructive operations
+- For production, make sure `alembic upgrade head` is run before starting the Flask app
+

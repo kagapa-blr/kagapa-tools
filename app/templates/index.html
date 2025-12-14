@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="kn" data-lang="kn">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title data-i18n="app.title">Kagapa Tools</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+</head>
+
+<body>
+    <!-- Navbar -->
+    {% include 'navbar.html' %}
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <h1 class="display-5 fw-bold" data-i18n="hero.title">Kagapa Tools</h1>
+            <p class="lead mt-3" data-i18n="hero.description">
+                A centralized hub for internal, developer, and operational utility tools.
+            </p>
+        </div>
+    </section>
+
+    <!-- Tools -->
+    <section class="container my-5">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold" data-i18n="tools.section_title">Available Tools</h2>
+            <p class="text-muted" data-i18n="tools.section_subtitle">
+                Select a utility below to get started
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <!-- File Utilities Card -->
+            <div class="col-md-4">
+                <div class="card tool-card h-100 text-center p-4">
+                    <div class="card-body">
+                        <div class="tool-icon mb-3">📄</div>
+                        <h5 class="card-title" data-i18n="tools.files.title">File Utilities</h5>
+                        <p class="card-text text-muted" data-i18n="tools.files.description"></p>
+                        <a href="/sort-doc/" class="btn btn-primary" data-i18n="common.open_tool">Open Tool</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    {% include 'footer.html' %}
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/language-switch.js') }}"></script>
+</body>
+
+</html>

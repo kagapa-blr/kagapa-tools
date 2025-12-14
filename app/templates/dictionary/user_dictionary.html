@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>User Dictionary Manager</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    crossorigin="anonymous">
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+  <!-- DataTables + Bootstrap 5 CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/user_dictionary.css') }}">
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+</head>
+
+<body>
+  <!-- Navbar -->
+  {% include 'navbar.html' %}
+  <!-- Global loading overlay -->
+  <div id="globalLoadingOverlay" class="loading-overlay d-none">
+    <div class="loading-overlay-content text-center">
+      <div class="spinner-border text-light mb-2" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="text-light small">
+        Processing request… Please wait
+      </div>
+    </div>
+  </div>
+
+  <!-- Reusable Info Modal -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center" id="infoModalLabel">
+            <i class="bi bi-info-circle me-2 text-primary"></i>
+            <span id="infoModalTitle">Section information</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="infoModalDescription" class="mb-3"></p>
+          <ul id="infoModalDetails" class="mb-0"></ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <div class="container">
+    <!-- Page title -->
+    <div class="my-3">
+      <h3 class="mb-1 fw-semibold">User-submitted words review</h3>
+      <p class="text-muted mb-1">
+        This dashboard lists words contributed by public users via the spellcheck applications.
+      </p>
+      <p class="text-muted mb-0">
+        As an admin, you can approve useful words into the main dictionary, remove unwanted entries,
+        or bulk-manage them via uploads and manual edits.
+      </p>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <!-- Left column: Add/Delete/Upload -->
+      <div class="col-lg-4 d-flex flex-column gap-3">
+        <!-- Add words -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <span class="card-header-icon card-header-icon-primary">＋</span>
+              <div>
+                <div class="fw-semibold">Add words manually</div>
+                <div class="card-header-subtitle">
+                  Queue and submit words directly into the user dictionary.
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-link btn-sm text-muted p-0 ms-2" data-info-section="add">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <label for="addWordsInput" class="form-label">Word(s) to add</label>
+              <div class="input-group">
+                <input type="text" id="addWordsInput" class="form-control"
+                  placeholder="Type word(s), press Enter or click Add">
+                <button id="addWordBtn" class="btn btn-primary">
+                  Add
+                </button>
+              </div>
+              <div class="form-text">
+                Multiple words allowed, separated by comma or space.
+                Words are normalized on the server before being stored.
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Queued to add</label>
+              <div id="addWordsChips"></div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button id="addSubmitBtn" class="btn btn-success btn-sm">
+                Submit queued words
+              </button>
+              <button id="addClearBtn" class="btn btn-outline-secondary btn-sm">
+                Clear list
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete words -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <span class="card-header-icon card-header-icon-danger">🗑</span>
+              <div>
+                <div class="fw-semibold">Remove words manually</div>
+                <div class="card-header-subtitle">
+                  Clean up incorrect or unwanted user-submitted entries.
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-link btn-sm text-muted p-0 ms-2" data-info-section="delete">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <label for="removeWordsInput" class="form-label">Word(s) to remove</label>
+              <div class="input-group">
+                <input type="text" id="removeWordsInput" class="form-control"
+                  placeholder="Type word(s), press Enter or Queue delete">
+                <button id="removeWordBtn" class="btn btn-danger">
+                  Queue delete
+                </button>
+              </div>
+              <div class="form-text">
+                These words will be deleted from the user dictionary (pending list).
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Queued to delete</label>
+              <div id="removeWordsChips"></div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button id="removeSubmitBtn" class="btn btn-danger btn-sm">
+                Delete queued words
+              </button>
+              <button id="removeClearBtn" class="btn btn-outline-secondary btn-sm">
+                Clear list
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload file -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <span class="card-header-icon card-header-icon-success">⬆</span>
+              <div>
+                <div class="fw-semibold">Bulk upload from documents</div>
+                <div class="card-header-subtitle">
+                  Import large sets of words from .txt or .docx sources.
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-link btn-sm text-muted p-0 ms-2" data-info-section="upload">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="fileInput" class="form-label">Upload document</label>
+              <input class="form-control" type="file" id="fileInput" accept=".txt,.docx">
+              <div class="form-text">
+                The service tokenizes the file, aggregates word frequencies,
+                and records them in the user dictionary table.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="addedByInput" class="form-label">Source label (optional)</label>
+              <input type="text" class="form-control" id="addedByInput" placeholder="e.g. editor name, team, or email">
+              <div class="form-text">
+                Use this to tag where these words came from (for example, a team, user group, or project).
+              </div>
+            </div>
+
+            <button id="uploadBtn" class="btn btn-primary mb-2 w-100">
+              Upload &amp; process words
+            </button>
+
+            <div id="uploadResultCounts" class="mt-2 d-none">
+              <!-- badges rendered here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: Table + Logs -->
+      <div class="col-lg-8 d-flex flex-column gap-3">
+        <!-- Table -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <div>
+              <span class="card-header-icon card-header-icon-primary">📄</span>
+              <span class="fw-semibold">Pending user-submitted words</span>
+              <div class="small text-muted">
+                Review words suggested by end users and decide whether to approve or remove them.
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <div class="input-group input-group-sm" style="width: 260px;">
+                <input type="text" id="tableSearchInput" class="form-control" placeholder="Filter by word or added_by">
+                <button id="tableSearchBtn" class="btn btn-outline-primary">
+                  Search
+                </button>
+              </div>
+
+              <button id="approveSelectedBtn" class="btn btn-success btn-sm" data-info-section="approve">
+                Approve selected
+              </button>
+              <button id="deleteSelectedBtn" class="btn btn-danger btn-sm" data-info-section="bulk-delete">
+                Delete selected
+              </button>
+              <button id="refreshTableBtn" class="btn btn-outline-secondary btn-sm">
+                Refresh list
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-2">
+              Use the checkboxes to select multiple user words.
+              Approve to promote them into the main dictionary, or delete to remove them
+              from the user list.
+            </p>
+            <table id="userWordsTable" class="table table-striped table-sm align-middle mb-0" style="width: 100%;">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 32px;">
+                    <input type="checkbox" id="selectAllRows">
+                  </th>
+                  <th>Word</th>
+                  <th>Added by</th>
+                  <th>Frequency</th>
+                  <th>Created at</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Activity log -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <span class="card-header-icon card-header-icon-primary">📝</span>
+              <div>
+                <span class="fw-semibold">Admin activity log</span>
+                <div class="card-header-subtitle">
+                  Track the most recent operations performed from this dashboard.
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-link btn-sm text-muted p-0 ms-2" data-info-section="log">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-2">
+              Use this log to quickly verify what changes were applied to user-submitted words
+              during your current admin session.
+            </p>
+            <div id="logArea" class="p-2 rounded">
+              <!-- log lines -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  {% include 'footer.html' %}
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- DataTables core + Bootstrap 5 -->
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"></script>
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  <!-- App JS -->
+  <script type="module" src="{{ url_for('static', filename='js/user_dictionary.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/language-switch.js') }}"></script>
+  <!-- Info modal wiring -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const infoConfig = {
+        add: {
+          title: "Add words manually",
+          description:
+            "Use this section when an admin wants to add or correct words directly, without going through the spellcheck applications.",
+          points: [
+            "Type one or more words and use Enter or the Add button to queue them.",
+            "Queued words are normalized server-side to maintain consistent casing and format.",
+            "When ready, click “Submit queued words” to persist them into the user dictionary."
+          ]
+        },
+        delete: {
+          title: "Remove words manually",
+          description:
+            "Use this section to remove specific user-submitted words that should no longer be suggested.",
+          points: [
+            "Type the words you want to remove and queue them using Enter or the Queue delete button.",
+            "Deletion happens from the user dictionary (pending table).",
+            "Use this for precise clean-up of problematic or obsolete entries."
+          ]
+        },
+        upload: {
+          title: "Bulk upload from documents",
+          description:
+            "Upload .txt or .docx documents to extract words and update the user dictionary with their frequencies.",
+          points: [
+            "The service tokenizes the document, counts occurrences, and aggregates frequencies per word.",
+            "Existing user words have their frequency increased; new words are inserted with an initial count.",
+            "Optionally tag uploads with a source label (team, project, or editor) via the added_by field."
+          ]
+        },
+        approve: {
+          title: "Approve selected words",
+          description:
+            "Use this action to promote selected user-submitted words into the main dictionary.",
+          points: [
+            "Select one or more rows from the pending list using the checkboxes.",
+            "Approved words are moved into the main dictionary, preserving their user frequency when available.",
+            "After approval, words are removed from the user pending list."
+          ]
+        },
+        "bulk-delete": {
+          title: "Delete selected words",
+          description:
+            "Use this action to bulk-remove multiple user-submitted words from the pending list.",
+          points: [
+            "Select one or more rows from the table and click Delete selected.",
+            "Confirm the deletion when prompted to avoid accidental removals.",
+            "Deleted words will no longer appear in this user pending review list."
+          ]
+        },
+        log: {
+          title: "Admin activity log",
+          description:
+            "The log provides a quick, session-level overview of what changed through this dashboard.",
+          points: [
+            "Each line describes a recent action such as add, delete, upload, or approve.",
+            "Newer events appear at the top so you can immediately verify the last operations.",
+            "Use this as a lightweight audit trail during review and testing."
+          ]
+        }
+      };
+
+      const infoModalEl = document.getElementById("infoModal");
+      const infoModal = new bootstrap.Modal(infoModalEl);
+      const titleEl = document.getElementById("infoModalTitle");
+      const descEl = document.getElementById("infoModalDescription");
+      const listEl = document.getElementById("infoModalDetails");
+
+      document.querySelectorAll("[data-info-section]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-info-section");
+          const cfg = infoConfig[key];
+          if (!cfg) return;
+
+          titleEl.textContent = cfg.title;
+          descEl.textContent = cfg.description;
+
+          listEl.innerHTML = "";
+          cfg.points.forEach((p) => {
+            const li = document.createElement("li");
+            li.textContent = p;
+            listEl.appendChild(li);
+          });
+
+          infoModal.show();
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

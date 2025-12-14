@@ -54,9 +54,6 @@ logger.info(f"UPLOAD_DIR   = {UPLOAD_DIR}")
 init_db(app)
 logger.info("Database initialized successfully")
 
-# ⚠️ Use only for DEV (disable in prod)
-create_tables(app)
-logger.info("Database tables verified/created")
 
 # --------------------------------------------------
 # Register Blueprints
