@@ -4,260 +4,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="tools.main_dictionary_dashboard.title">Main Dictionary - Spellcheck Core</title>
-
-  <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
-    crossorigin="anonymous">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-
-  <!-- DataTables -->
+  <title>Main Dictionary</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-
-  <!-- App Styles -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main_dictionary.css') }}">
 </head>
 
 <body class="bg-light">
   {% include 'navbar.html' %}
 
-  <!-- Loading Overlay -->
-  <div id="globalLoadingOverlay" class="loading-overlay d-none">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="mt-2 fw-semibold" data-i18n="common.loading">Processing dictionary operations…</div>
+  <!-- Loading -->
+  <div id="loadingOverlay" class="loading-overlay d-none">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-2 fw-semibold text-white">Processing...</div>
   </div>
 
-  <!-- Info Modal - MISSING STRUCTURE ADDED -->
-  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content shadow-xl">
-        <div class="modal-header bg-gradient-primary text-white border-0">
-          <h5 class="modal-title fw-bold" id="infoModalTitle">Modal Title</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+  <!-- Confirm Modal -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="confirmTitle">Confirm Action</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body p-4">
-          <p class="mb-4 fs-6" id="infoModalDescription">Modal description goes here.</p>
-          <ul id="infoModalDetails" class="ps-4 mb-0"></ul>
+        <div class="modal-body">
+          <div id="confirmMessage" class="mb-3"></div>
+          <div id="confirmPreview" class="p-2 bg-light rounded d-none"></div>
         </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmBtn">Confirm</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Container -->
-  <div class="container-fluid py-4 py-lg-5">
+  <div class="container-fluid py-4">
     <!-- Header -->
-    <div class="row mb-4 mb-lg-5">
+    <div class="row mb-4">
       <div class="col-12">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center justify-content-between mb-3">
           <div class="d-flex align-items-center">
-            <div class="bg-success bg-opacity-10 p-3 rounded-4 shadow-sm me-3">
-              <i class="bi bi-book-check fs-1 text-success"></i>
-            </div>
-            <div>
-              <h1 class="fw-bold mb-1 lh-1 fs-1 fs-md-2">Main Dictionary</h1>
-              <p class="mb-0 text-muted fs-6">
-                <strong class="text-success">Spellcheck Core</strong> - Primary dictionary for all validation &
-                suggestions
-              </p>
-            </div>
+            <i class="bi bi-book-check fs-2 text-primary me-3 p-2 bg-primary bg-opacity-10 rounded"></i>
+            <h1 class="h4 fw-bold mb-0">Main Dictionary</h1>
+            <span class="badge bg-success ms-2">LIVE</span>
           </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <span class="badge bg-success fs-6 px-4 py-2 shadow-sm">
-              <i class="bi bi-lightning-charge-fill me-1"></i>LIVE
-            </span>
-            <button id="refreshMainTableBtn" class="btn btn-outline-success px-4 shadow-sm" title="Refresh (Ctrl+F5)"
-              data-bs-toggle="tooltip">
-              <i class="bi bi-arrow-clockwise me-2"></i>Refresh
-            </button>
+          <button id="refreshBtn" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+        </div>
+        <div class="alert alert-info border-start border-3 p-3">
+          <i class="bi bi-lightning me-2"></i>Changes apply instantly to all spellcheck clients
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Cards -->
+    <div class="row g-4 mb-4">
+      <!-- Add Card -->
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header bg-success text-white">
+            <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add Words</h6>
+          </div>
+          <div class="card-body">
+            <div class="input-group mb-3">
+              <input type="text" id="addInput" class="form-control" placeholder="Type single word and click Queue">
+              <button id="addQueueBtn" class="btn btn-light">
+                <i class="bi bi-plus-circle"></i> Add to Queue
+              </button>
+            </div>
+            <div id="addQueueCount" class="mb-2 text-center">
+              <span class="badge bg-light text-dark fs-6" id="addCount">0</span> words in queue
+            </div>
+            <div id="addChips" class="mb-3 d-flex flex-wrap gap-1 justify-content-center"></div>
+            <div class="d-grid gap-2">
+              <button id="addSubmitBtn" class="btn btn-success" disabled>
+                <i class="bi bi-check-lg me-2"></i>Add All to Dictionary
+              </button>
+              <button id="addClearBtn" class="btn btn-outline-secondary" disabled>Clear Queue</button>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Live Impact Alert -->
-        <div class="alert alert-info border-start border-4 border-info shadow-sm mt-4">
-          <div class="d-flex align-items-start">
-            <i class="bi bi-lightning-charge-fill fs-4 text-info mt-1 me-3 flex-shrink-0"></i>
-            <div>
-              <strong>⚡ Live Impact:</strong> Changes apply <strong>instantly</strong> to all connected spellcheck
-              clients
-              <div class="mt-1 small">
-                <kbd class="me-1">Ctrl+F5</kbd> on clients to refresh cache
-              </div>
+      <!-- Remove Card -->
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header bg-danger text-white">
+            <h6 class="mb-0"><i class="bi bi-trash me-2"></i>Remove Words</h6>
+          </div>
+          <div class="card-body">
+            <div class="input-group mb-3">
+              <input type="text" id="removeInput" class="form-control" placeholder="Type single word and click Queue">
+              <button id="removeQueueBtn" class="btn btn-light">
+                <i class="bi bi-plus-circle"></i> Add to Queue
+              </button>
+            </div>
+            <div id="removeQueueCount" class="mb-2 text-center">
+              <span class="badge bg-light text-dark fs-6" id="removeCount">0</span> words in queue
+            </div>
+            <div id="removeChips" class="mb-3 d-flex flex-wrap gap-1 justify-content-center"></div>
+            <div class="d-grid gap-2">
+              <button id="removeSubmitBtn" class="btn btn-danger" disabled>
+                <i class="bi bi-trash3 me-2"></i>Delete All from Dictionary
+              </button>
+              <button id="removeClearBtn" class="btn btn-outline-secondary" disabled>Clear Queue</button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Content Grid -->
-    <div class="row g-4">
-      <!-- Add Panel -->
-      <div class="col-lg-4">
-        <div class="card shadow-lg border-0 h-100 overflow-hidden">
-          <div class="card-header bg-gradient-primary text-white border-0 p-4 position-relative">
-            <div class="position-absolute start-0 top-50 translate-middle-y w-3 bg-white opacity-25 rounded"></div>
-            <div class="d-flex align-items-center">
-              <div class="bg-white bg-opacity-20 p-3 rounded-3 me-3 shadow-sm">
-                <i class="bi bi-plus-circle-fill fs-2 text-white"></i>
-              </div>
-              <div>
-                <h6 class="mb-1 fw-bold">Add Verified Words</h6>
-                <small class="opacity-90">Live across all clients</small>
-              </div>
-            </div>
-            <button class="btn btn-outline-light btn-sm ms-auto rounded-pill px-3" data-info-section="add"
-              data-bs-toggle="tooltip" title="How to add">
-              <i class="bi bi-info-circle me-1"></i>Help
-            </button>
-          </div>
+    <!-- Stats & Controls -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center">
           <div class="card-body p-4">
-            <div class="input-group input-group-lg mb-4">
-              <input type="text" id="mainAddWordsInput" class="form-control form-control-lg border-success shadow-sm"
-                placeholder="ಕನ್ನಡ, words, verified... (comma/space separated)">
-              <button id="mainAddWordBtn" class="btn btn-outline-success btn-lg shadow-sm" data-bs-toggle="tooltip"
-                title="Add to queue (Enter)">
-                <i class="bi bi-plus-lg me-2"></i>Add
-              </button>
-            </div>
-            <div id="mainAddWordsChips" class="mb-4"></div>
-            <div class="d-flex gap-2">
-              <button id="mainAddSubmitBtn" class="btn btn-success flex-grow-1 shadow-sm">
-                <i class="bi bi-check2-circle me-2"></i>Add to Core Dictionary
-              </button>
-              <button id="mainAddClearBtn" class="btn btn-outline-secondary shadow-sm">Clear</button>
-            </div>
+            <div class="h2 fw-bold text-primary mb-1" id="totalWords">--</div>
+            <div class="text-muted">Total Words</div>
           </div>
         </div>
       </div>
-
-      <!-- Remove Panel -->
-      <div class="col-lg-4">
-        <div class="card shadow-lg border-0 h-100 overflow-hidden">
-          <div class="card-header bg-gradient-danger text-white border-0 p-4 position-relative">
-            <div class="position-absolute end-0 top-50 translate-middle-y w-3 bg-white opacity-25 rounded"></div>
-            <div class="d-flex align-items-center">
-              <div class="bg-white bg-opacity-20 p-3 rounded-3 me-3 shadow-sm">
-                <i class="bi bi-trash3-fill fs-2 text-white"></i>
-              </div>
-              <div>
-                <h6 class="mb-1 fw-bold">Remove Invalid Words</h6>
-                <small class="opacity-90">Permanently invalidate</small>
-              </div>
-            </div>
-            <button class="btn btn-outline-light btn-sm ms-auto rounded-pill px-3" data-info-section="delete"
-              data-bs-toggle="tooltip" title="How to remove">
-              <i class="bi bi-info-circle me-1"></i>Help
-            </button>
-          </div>
-          <div class="card-body p-4">
-            <div class="input-group input-group-lg mb-4">
-              <input type="text" id="mainRemoveWordsInput" class="form-control form-control-lg border-danger shadow-sm"
-                placeholder="invalid, words, to remove...">
-              <button id="mainRemoveWordBtn" class="btn btn-outline-danger btn-lg shadow-sm" data-bs-toggle="tooltip"
-                title="Queue for removal (Enter)">
-                <i class="bi bi-plus-lg me-2"></i>Queue
-              </button>
-            </div>
-            <div id="mainRemoveWordsChips" class="mb-4"></div>
-            <div class="d-flex gap-2">
-              <button id="mainRemoveSubmitBtn" class="btn btn-danger flex-grow-1 shadow-sm">
-                <i class="bi bi-trash3-fill me-2"></i>Delete from Core
-              </button>
-              <button id="mainRemoveClearBtn" class="btn btn-outline-secondary shadow-sm">Clear</button>
-            </div>
-          </div>
+      <div class="col-md-9 d-flex align-items-center">
+        <div class="form-check form-switch me-3">
+          <input class="form-check-input" type="checkbox" id="selectAll">
+          <label class="form-check-label" for="selectAll">Select All Rows</label>
         </div>
+        <div id="selectedCountBadge" class="badge bg-secondary fs-6 me-2" style="display:none;">0 selected</div>
       </div>
+    </div>
 
-      <!-- Stats & Quick Actions -->
-      <div class="col-lg-4">
-        <div class="card shadow-lg border-0 h-100">
-          <div class="card-header bg-gradient-warning text-dark border-0 p-4">
-            <h6 class="mb-0 fw-bold fs-5">
-              <i class="bi bi-bar-chart-line me-2 text-warning"></i>Quick Stats & Actions
-            </h6>
-          </div>
-          <div class="card-body p-4">
-            <div id="dictionaryStats" class="mb-4">
-              <div
-                class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 shadow-sm border">
-                <span class="fw-semibold text-muted">Total Words</span>
-                <span class="fs-3 fw-bold text-primary" id="totalWordsCount">--</span>
-              </div>
-              <div
-                class="d-flex justify-content-between align-items-center mb-0 p-3 bg-light rounded-3 shadow-sm border">
-                <span class="fw-semibold text-muted">High Frequency</span>
-                <span class="fs-3 fw-bold text-success" id="topFrequency">--</span>
-              </div>
-            </div>
-            <div class="d-grid gap-2">
-              <button id="mainIncrementSelectedBtn" class="btn btn-outline-success shadow-sm" data-bs-toggle="tooltip"
-                title="F2">
-                <i class="bi bi-arrow-up-circle me-2"></i>Increment Selected Freq
-              </button>
-              <button id="mainDeleteSelectedBtn" class="btn btn-outline-danger shadow-sm" data-bs-toggle="tooltip"
-                title="Delete">
-                <i class="bi bi-trash3 me-2"></i>Bulk Delete Selected
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Table -->
+    <!-- Table -->
+    <div class="row">
       <div class="col-12">
-        <div class="card shadow-xl border-0 overflow-hidden">
-          <div class="card-header bg-gradient-light border-0 p-4">
-            <div class="row align-items-center g-3">
-              <div class="col-md-6">
-                <div class="d-flex align-items-center">
-                  <span class="badge bg-success fs-6 px-3 py-2 me-3 shadow-sm">
-                    <i class="bi bi-check-circle-fill me-1"></i>Verified Core
-                  </span>
-                  <h5 class="mb-0 fw-bold">Dictionary Table</h5>
-                </div>
-                <small class="text-muted d-block mt-1">Live data - powers all spellcheck validation engines</small>
+        <div class="card">
+          <div class="card-header bg-light p-3">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-table me-2"></i>Dictionary Words</h6>
               </div>
-              <div class="col-md-6 text-md-end">
-                <div class="d-flex gap-2 flex-wrap justify-content-md-end">
-                  <div class="input-group input-group-lg" style="width: 320px;">
-                    <input id="mainTableSearchInput" class="form-control shadow-sm"
-                      placeholder="🔍 Search words, added_by, frequency...">
-                    <button id="mainTableSearchBtn" class="btn btn-primary shadow-sm">
-                      <i class="bi bi-search"></i>
-                    </button>
-                  </div>
-                  <div class="form-check form-switch form-switch-lg">
-                    <input class="form-check-input" type="checkbox" id="mainSelectAll">
-                    <label class="form-check-label fw-semibold small" for="mainSelectAll">Select All Visible</label>
-                  </div>
+              <div class="col-md-4">
+                <div class="input-group">
+                  <input type="text" id="searchInput" class="form-control" placeholder="Search words...">
+                  <button id="searchBtn" class="btn btn-outline-secondary">
+                    <i class="bi bi-search"></i>
+                  </button>
+                  <button id="bulkDeleteBtn" class="btn btn-danger" disabled>
+                    <i class="bi bi-trash3-fill me-2"></i>Delete Selected
+                  </button>
                 </div>
               </div>
             </div>
           </div>
           <div class="card-body p-0">
-            <div class="bg-light p-3 border-bottom">
-              <small class="text-muted d-flex align-items-center">
-                <i class="bi bi-info-circle me-2"></i>
-                Click rows to select • <kbd class="ms-1 me-1">F2</kbd> Increment frequency • <kbd
-                  class="ms-1 me-1">Delete</kbd> Bulk delete
-              </small>
-            </div>
             <div class="table-responsive">
-              <table id="mainWordsTable" class="table table-hover align-middle mb-0">
-                <thead class="table-dark sticky-top">
+              <table id="wordsTable" class="table table-hover mb-0">
+                <thead class="table-dark">
                   <tr>
-                    <th style="width: 50px;"></th>
-                    <th style="width: 35%;"><i class="bi bi-fonts me-1"></i>Word</th>
-                    <th style="width: 15%; text-align: center;"><i class="bi bi-graph-up me-1"></i>Frequency</th>
-                    <th style="width: 20%;"><i class="bi bi-person me-1"></i>Added By</th>
-                    <th style="width: 25%;"><i class="bi bi-calendar-check me-1"></i>Added</th>
-                    <th style="width: 50px;"></th>
+                    <th style="width: 40px;"></th>
+                    <th style="width: 60px;" class="text-center">SN</th>
+                    <th style="width: 35%;">Word</th>
+                    <th style="width: 12%;" class="text-center">Frequency</th>
+                    <th style="width: 18%;">Added By</th>
+                    <th style="width: 20%;">Added</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -266,34 +177,18 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Activity Log -->
+    <!-- Activity Log -->
+    <div class="row mt-4">
       <div class="col-12">
-        <div class="card shadow-xl border-0">
-          <div
-            class="card-header position-relative p-4 border-0 bg-gradient-to-r from-emerald-50 via-blue-50 to-purple-50">
-            <div
-              class="position-absolute start-0 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-500 via-blue-500 to-purple-500 shadow-sm h-100">
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="d-flex align-items-center pe-4">
-                <div class="bg-gradient-to-br from-emerald-500 to-blue-600 text-white p-3 rounded-3 shadow-lg me-3">
-                  <i class="bi bi-journal-text fs-2"></i>
-                </div>
-                <div>
-                  <h6 class="mb-1 fw-bold fs-5 text-dark">Core Dictionary Activity Log</h6>
-                  <small class="text-muted">Real-time audit trail</small>
-                </div>
-              </div>
-              <button class="btn btn-outline-primary btn-sm rounded-pill px-4 shadow-sm" data-info-section="log">
-                <i class="bi bi-info-circle me-1"></i>Details
-              </button>
-            </div>
+        <div class="card">
+          <div class="card-header bg-dark text-white">
+            <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Activity Log</h6>
           </div>
           <div class="card-body p-0">
-            <div id="mainLogArea" class="p-4"
-              style="max-height: 320px; overflow-y: auto; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.875rem; line-height: 1.6; background: linear-gradient(180deg, #fdfdfd 0%, #f8f9fa 100%);">
-              <!-- Dynamic log entries -->
+            <div id="logArea" class="p-3"
+              style="max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.875rem; background: #f8f9fa;">
             </div>
           </div>
         </div>
@@ -307,96 +202,8 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-    crossorigin="anonymous"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="{{ url_for('static', filename='js/main_dictionary.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/language-switch.js') }}"></script>
-
-  <!-- FIXED Info Modal Handler + Tooltips -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      // Info Modal Configuration
-      const modalConfig = {
-        add: {
-          title: 'Add Verified Words to Core',
-          description: 'Words added here become immediately valid across ALL spellcheck clients.',
-          points: [
-            'Type verified Kannada words (comma/space separated)',
-            'Press Enter or click "Add" to queue',
-            'Click "Add to Core Dictionary" to save permanently',
-            'Duplicates are automatically skipped'
-          ]
-        },
-        delete: {
-          title: 'Remove Invalid Words',
-          description: 'Permanently removes words from spellcheck validation.',
-          points: [
-            'Queue words to remove from core dictionary',
-            'Confirmation prevents accidental deletions',
-            'Changes apply instantly to all clients',
-            'Use search to find problematic words first'
-          ]
-        },
-        log: {
-          title: 'Activity Log Details',
-          description: 'Complete audit trail with success/error tracking.',
-          points: [
-            '✅ SUCCESS - Words added/updated successfully',
-            '⚠️ SKIPPED - Duplicates or validation errors',
-            '❌ ERROR - API failures or constraints',
-            'Newest actions appear at the top'
-          ]
-        }
-      };
-
-      // Initialize Modal with proper error handling
-      let modal;
-      try {
-        modal = new bootstrap.Modal(document.getElementById('infoModal'), {
-          backdrop: true,
-          keyboard: true
-        });
-      } catch (error) {
-        console.error('Modal initialization failed:', error);
-        return;
-      }
-
-      // Modal event handlers
-      document.querySelectorAll('[data-info-section]').forEach(btn => {
-        btn.addEventListener('click', function () {
-          try {
-            const section = this.dataset.infoSection;
-            const config = modalConfig[section];
-            if (!config) return;
-
-            document.getElementById('infoModalTitle').textContent = config.title;
-            document.getElementById('infoModalDescription').textContent = config.description;
-            const list = document.getElementById('infoModalDetails');
-            list.innerHTML = config.points.map(point =>
-              `<li class="mb-2 p-2 bg-light rounded-2 border-start border-success border-2">
-                <i class="bi bi-check-circle-fill text-success me-2"></i>${point}
-              </li>`
-            ).join('');
-
-            modal.show();
-          } catch (error) {
-            console.error('Modal show failed:', error);
-          }
-        });
-      });
-
-      // Tooltips with error handling
-      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-      tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-        try {
-          new bootstrap.Tooltip(tooltipTriggerEl);
-        } catch (error) {
-          console.warn('Tooltip initialization failed for element:', tooltipTriggerEl);
-        }
-      });
-    });
-  </script>
 </body>
 
 </html>

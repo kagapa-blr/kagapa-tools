@@ -1,15 +1,11 @@
 /* static/css/main_dictionary.css */
-
-/* ==========================================================================
-   LOADING OVERLAY
-   ========================================================================== */
 .loading-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     z-index: 9999;
     display: flex;
     flex-direction: column;
@@ -17,256 +13,42 @@
     justify-content: center;
 }
 
-/* ==========================================================================
-   CARD GRADIENTS
-   ========================================================================== */
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+#addInput,
+#removeInput,
+#searchInput {
+    pointer-events: auto !important;
 }
 
-.bg-gradient-danger {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.bg-gradient-warning {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-}
-
-.bg-gradient-light {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-/* ==========================================================================
-   CHIPS & BADGES
-   ========================================================================== */
-#mainAddWordsChips .badge,
-#mainRemoveWordsChips .badge {
-    font-size: 0.875rem;
+#addChips .badge,
+#removeChips .badge {
     padding: 0.5rem 0.75rem;
-    border-radius: 20px;
-    transition: all 0.2s ease;
+    margin: 0.125rem;
+    cursor: pointer;
+    font-size: 0.875rem;
 }
 
-#mainAddWordsChips .badge:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+#wordsTable tbody tr.table-active {
+    background-color: #d1ecf1 !important;
 }
 
-#mainRemoveWordsChips .badge:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
-}
-
-#mainAddWordsChips .bi-x,
-#mainRemoveWordsChips .bi-x {
-    font-size: 0.75rem;
-    opacity: 0.7;
-    transition: all 0.2s ease;
-}
-
-#mainAddWordsChips .bi-x:hover,
-#mainRemoveWordsChips .bi-x:hover {
-    opacity: 1;
-    transform: scale(1.2);
-    color: #fff !important;
-}
-
-/* ==========================================================================
-   TABLE ENHANCEMENTS
-   ========================================================================== */
-#mainWordsTable {
-    margin-bottom: 0 !important;
-}
-
-#mainWordsTable thead th {
-    border: none;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-}
-
-#mainWordsTable tbody tr.table-active {
-    background-color: rgba(25, 135, 84, 0.1) !important;
-    border-left: 4px solid #28a745;
-}
-
-#mainWordsTable tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05) !important;
-}
-
-#mainWordsTable .row-select {
-    transform: scale(1.1);
+#wordsTable .form-check-input {
+    transform: scale(1.25);
     cursor: pointer;
 }
 
-#mainWordsTable .badge {
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-/* ==========================================================================
-   STATS CARDS
-   ========================================================================== */
-#dictionaryStats .bg-light {
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease;
-}
-
-#dictionaryStats .bg-light:hover {
-    background-color: rgba(0, 123, 255, 0.05);
-    border-color: rgba(0, 123, 255, 0.2);
-    transform: translateY(-1px);
-}
-
-/* ==========================================================================
-   LOG AREA
-   ========================================================================== */
-#mainLogArea {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(108, 117, 125, 0.5) transparent;
-}
-
-#mainLogArea::-webkit-scrollbar {
+#logArea::-webkit-scrollbar {
     width: 6px;
 }
 
-#mainLogArea::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#mainLogArea::-webkit-scrollbar-thumb {
-    background: rgba(108, 117, 125, 0.5);
+#logArea::-webkit-scrollbar-thumb {
+    background: #adb5bd;
     border-radius: 3px;
 }
 
-#mainLogArea::-webkit-scrollbar-thumb:hover {
-    background: rgba(108, 117, 125, 0.8);
+.btn:disabled {
+    opacity: 0.65;
 }
 
-/* ==========================================================================
-   FORM CONTROLS
-   ========================================================================== */
-#mainAddWordsInput,
-#mainRemoveWordsInput {
+#selectedCountBadge {
     transition: all 0.2s ease;
-}
-
-#mainAddWordsInput:focus {
-    border-color: #28a745 !important;
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
-}
-
-#mainRemoveWordsInput:focus {
-    border-color: #dc3545 !important;
-    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
-}
-
-/* ==========================================================================
-   BUTTONS
-   ========================================================================== */
-.btn-outline-success:hover,
-.btn-success:hover {
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-    transform: translateY(-1px);
-}
-
-.btn-outline-danger:hover,
-.btn-danger:hover {
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
-    transform: translateY(-1px);
-}
-
-#refreshMainTableBtn:hover {
-    animation: spin 0.5s linear infinite;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* ==========================================================================
-   RESPONSIVE
-   ========================================================================== */
-@media (max-width: 992px) {
-    .col-lg-4 {
-        margin-bottom: 1.5rem;
-    }
-
-    #mainTableSearchInput {
-        font-size: 0.9rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .input-group-lg .form-control {
-        font-size: 1rem;
-    }
-
-    .input-group-lg .btn-lg {
-        font-size: 0.95rem;
-        padding: 0.5rem 1rem;
-    }
-
-    #mainWordsTable th,
-    #mainWordsTable td {
-        padding: 0.75rem 0.5rem !important;
-        font-size: 0.9rem;
-    }
-}
-
-/* ==========================================================================
-   UTILITIES
-   ========================================================================== */
-.cursor-pointer {
-    cursor: pointer !important;
-}
-
-.shadow-xl {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-}
-
-.h-20 {
-    height: 20px;
-}
-
-/* ==========================================================================
-   KANNADA FONT SUPPORT
-   ========================================================================== */
-#mainWordsTable td,
-#mainAddWordsInput,
-#mainRemoveWordsInput,
-#mainAddWordsChips,
-#mainRemoveWordsChips {
-    font-feature-settings: "kern" 1, "liga" 1, "clig" 1;
-    line-height: 1.6;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    .table-hover tbody tr:hover {
-        background-color: rgba(0, 123, 255, 0.2) !important;
-    }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
 }

@@ -1,622 +1,369 @@
-// static/js/main_dictionary.js
+// static/js/main_dictionary.js - ✅ ALL ISSUES FIXED
 import apiClient from "./apiClient.js";
 import API_ENDPOINTS from "./apiEndpoints.js";
 
-// ================================
-// STATE MANAGEMENT
-// ================================
 const state = {
     addWords: [],
     removeWords: [],
-    busy: false,
-    table: null,
     selectedWords: new Set(),
+    table: null,
+    busy: false
 };
 
-// ================================
-// DOM ELEMENTS
-// ================================
 const els = {
-    // Add panel
-    addWordsInput: document.getElementById("mainAddWordsInput"),
-    mainAddWordBtn: document.getElementById("mainAddWordBtn"),
-    mainAddWordsChips: document.getElementById("mainAddWordsChips"),
-    mainAddSubmitBtn: document.getElementById("mainAddSubmitBtn"),
-    mainAddClearBtn: document.getElementById("mainAddClearBtn"),
-
-    // Remove panel
-    removeWordsInput: document.getElementById("mainRemoveWordsInput"),
-    mainRemoveWordBtn: document.getElementById("mainRemoveWordBtn"),
-    mainRemoveWordsChips: document.getElementById("mainRemoveWordsChips"),
-    mainRemoveSubmitBtn: document.getElementById("mainRemoveSubmitBtn"),
-    mainRemoveClearBtn: document.getElementById("mainRemoveClearBtn"),
-
-    // Stats
-    totalWordsCount: document.getElementById("totalWordsCount"),
-    topFrequency: document.getElementById("topFrequency"),
-
-    // Table
-    refreshMainTableBtn: document.getElementById("refreshMainTableBtn"),
-    mainTableSearchInput: document.getElementById("mainTableSearchInput"),
-    mainTableSearchBtn: document.getElementById("mainTableSearchBtn"),
-    mainSelectAll: document.getElementById("mainSelectAll"),
-    mainIncrementSelectedBtn: document.getElementById("mainIncrementSelectedBtn"),
-    mainDeleteSelectedBtn: document.getElementById("mainDeleteSelectedBtn"),
-
-    // Log
-    logArea: document.getElementById("mainLogArea"),
-
-    // Loading
-    globalLoadingOverlay: document.getElementById("globalLoadingOverlay"),
+    addInput: '#addInput', addQueueBtn: '#addQueueBtn', addChips: '#addChips', addCount: '#addCount',
+    addSubmitBtn: '#addSubmitBtn', addClearBtn: '#addClearBtn',
+    removeInput: '#removeInput', removeQueueBtn: '#removeQueueBtn', removeChips: '#removeChips', removeCount: '#removeCount',
+    removeSubmitBtn: '#removeSubmitBtn', removeClearBtn: '#removeClearBtn',
+    searchInput: '#searchInput', searchBtn: '#searchBtn', refreshBtn: '#refreshBtn',
+    bulkDeleteBtn: '#bulkDeleteBtn', selectAll: '#selectAll', totalWords: '#totalWords',
+    logArea: '#logArea', loading: '#loadingOverlay', selectedCountBadge: '#selectedCountBadge'
 };
 
-// ================================
-// UTILITY FUNCTIONS
-// ================================
+const log = (message, type = 'info') => {
+    const logEl = document.querySelector(els.logArea);
+    const line = document.createElement('div');
+    line.className = `mb-2 p-2 rounded border-start border-${type} ps-3 small`;
+    line.innerHTML = `
+        <span class="badge bg-${type} me-2">${{ info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' }[type] || 'ℹ️'}</span>
+        ${message}
+        <div class="text-muted mt-1" style="font-size: 0.75rem;">${new Date().toLocaleTimeString()}</div>
+    `;
+    logEl.prepend(line);
+    logEl.scrollTop = 0;
+    if (logEl.children.length > 30) logEl.removeChild(logEl.lastChild);
+};
 
-/**
- * Safe HTML escaping for XSS protection
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
+const escapeHtml = text => text?.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]) || '';
+
+const updateUI = () => {
+    // Add queue
+    document.getElementById('addCount').textContent = state.addWords.length;
+    document.getElementById('addSubmitBtn').disabled = state.addWords.length === 0;
+    document.getElementById('addClearBtn').disabled = state.addWords.length === 0;
+    document.getElementById('addChips').innerHTML = state.addWords.map((word, i) => `
+        <span class="badge bg-success">
+            ${escapeHtml(word)}
+            <i class="bi bi-x ms-1 text-white ms-1" style="cursor:pointer;font-size:0.75rem;" onclick="app.removeFromAdd(${i})" title="Remove"></i>
+        </span>
+    `).join('') || '<div class="text-muted small w-100 text-center">No words queued</div>';
+
+    // Remove queue
+    document.getElementById('removeCount').textContent = state.removeWords.length;
+    document.getElementById('removeSubmitBtn').disabled = state.removeWords.length === 0;
+    document.getElementById('removeClearBtn').disabled = state.removeWords.length === 0;
+    document.getElementById('removeChips').innerHTML = state.removeWords.map((word, i) => `
+        <span class="badge bg-danger">
+            ${escapeHtml(word)}
+            <i class="bi bi-x ms-1 text-white ms-1" style="cursor:pointer;font-size:0.75rem;" onclick="app.removeFromRemove(${i})" title="Remove"></i>
+        </span>
+    `).join('') || '<div class="text-muted small w-100 text-center">No words queued</div>';
+
+    // Table selection
+    const selectedBadge = document.querySelector(els.selectedCountBadge);
+    const count = state.selectedWords.size;
+    document.getElementById('bulkDeleteBtn').disabled = count === 0;
+    if (count > 0) {
+        selectedBadge.textContent = `${count} selected`;
+        selectedBadge.className = `badge bg-primary fs-6`;
+        selectedBadge.style.display = 'inline-block';
+    } else {
+        selectedBadge.style.display = 'none';
+    }
+};
+
+const toggleBusy = (busy) => {
+    state.busy = busy;
+    document.querySelectorAll('button:not([data-bs-dismiss])').forEach(btn => btn.disabled = busy);
+    document.querySelector(els.loading).classList.toggle('d-none', !busy);
+};
+
+const showConfirmModal = (title, message, words, callback) => {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+
+    const preview = document.getElementById('confirmPreview');
+    if (words.length) {
+        preview.innerHTML = words.slice(0, 8).map(w => `<span class="badge bg-warning me-1 mb-1">${escapeHtml(w)}</span>`).join('') +
+            (words.length > 8 ? `<div class="text-muted small mt-1">+${words.length - 8} more</div>` : '');
+        preview.classList.remove('d-none');
+    } else {
+        preview.classList.add('d-none');
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+
+    document.getElementById('confirmBtn').onclick = async () => {
+        modal.hide();
+        toggleBusy(true);
+        try {
+            await callback();
+        } catch (error) {
+            log(error.response?.data?.message || error.message || 'Operation failed', 'error');
+        } finally {
+            toggleBusy(false);
+        }
     };
-    return text.toString().replace(/[&<>"']/g, m => map[m]);
-}
+};
 
-/**
- * Normalize table data - CRITICAL FIX for null/undefined errors
- * ✅ SHOWS RAW BACKEND DATA - NO FORMATTING
- */
-function normalizeTableData(rawData) {
-    if (!rawData || !Array.isArray(rawData)) {
-        console.warn('Invalid table data received:', rawData);
-        return [];
-    }
-
-    return rawData
-        .map((row, index) => ({
-            id: row.id || `row-${index}`,
-            word: row.word || '',
-            frequency: row.frequency || 0,  // ✅ RAW backend value
-            added_by: row.added_by || 'Unknown',  // ✅ RAW backend value
-            added: row.added || row.added_at || 'N/A'  // ✅ RAW backend date/timestamp
-        }))
-        .filter(row => row.word && row.word.trim().length > 0);
-}
-
-/**
- * Parse comma/space separated words
- */
-function parseWordsInput(value) {
-    if (!value) return [];
-    return value
-        .split(/[,\s]+/)
-        .map(w => w.trim())
-        .filter(Boolean);
-}
-
-/**
- * Render word chips with remove functionality
- */
-function renderChips(container, items) {
-    container.innerHTML = '';
-    items.forEach((word, idx) => {
-        const chip = document.createElement("span");
-        chip.className = "badge bg-success me-1 mb-1 px-3 py-2";
-        chip.innerHTML = `${escapeHtml(word)} 
-            <i class="bi bi-x-circle ms-2 text-danger cursor-pointer" 
-               style="cursor:pointer; font-size: 0.9em;" 
-               onclick="mainDict.removeChip('${container.id}', ${idx})" 
-               title="Remove"></i>`;
-        container.appendChild(chip);
-    });
-}
-
-/**
- * ✅ ENHANCED LOG - Shows RAW backend errors/messages
- */
-function log(responseData, type = "info") {
-    const line = document.createElement("div");
-    line.className = "mb-2 p-3 bg-light rounded-3 border-start border-3 shadow-sm";
-
-    let msg = "", badgeClass = "bg-secondary", icon = "ℹ️";
-    let detailsContent = "";
-
-    // ✅ RAW BACKEND DATA DISPLAY
-    if (typeof responseData === "object" && responseData !== null) {
-        const created = (responseData.created || []).length;
-        const skipped = (responseData.skipped || []).length;
-        const deleted = (responseData.deleted || []).length;
-        const notFound = (responseData.not_found || []).length;
-
-        // ✅ Backend error messages first
-        if (responseData.error || responseData.message || responseData.detail) {
-            badgeClass = "bg-danger border-danger";
-            icon = "❌";
-            msg = responseData.error || responseData.message || responseData.detail || "ERROR";
-            detailsContent = JSON.stringify(responseData, null, 2);
+const initPanels = () => {
+    // Add single word workflow
+    document.getElementById('addQueueBtn').onclick = () => {
+        const input = document.getElementById('addInput');
+        const word = input.value.trim();
+        if (!word) {
+            log('Please enter a word', 'warning');
+            return;
         }
-        // ✅ Success responses
-        else if (created > 0 || deleted > 0) {
-            badgeClass = "bg-success border-success";
-            icon = "✅";
-            msg = created > 0 ? `ADDED: ${created}` : `DELETED: ${deleted}`;
-            if (skipped > 0) msg += ` | SKIPPED: ${skipped}`;
-            if (notFound > 0) msg += ` | NOT FOUND: ${notFound}`;
-            detailsContent = JSON.stringify(responseData, null, 2);
+        if (state.addWords.includes(word)) {
+            log(`"${word}" already in queue`, 'warning');
+            return;
         }
-        // ✅ Warning responses
-        else if (skipped > 0 || notFound > 0) {
-            badgeClass = "bg-warning border-warning text-dark";
-            icon = "⚠️";
-            msg = `SKIPPED: ${skipped + notFound} words`;
-            detailsContent = JSON.stringify(responseData, null, 2);
-        }
-        // ✅ Info responses
-        else {
-            badgeClass = "bg-info border-info";
-            icon = "ℹ️";
-            msg = responseData.status || "INFO";
-            detailsContent = JSON.stringify(responseData, null, 2);
-        }
-    } else {
-        // Manual string messages
-        if (type === "success" || type === "ok") {
-            badgeClass = "bg-success border-success";
-            icon = "✅";
-            msg = responseData || "SUCCESS";
-        } else if (type === "error" || type === "err") {
-            badgeClass = "bg-danger border-danger";
-            icon = "❌";
-            msg = responseData || "ERROR";
-        } else {
-            badgeClass = "bg-secondary border-secondary";
-            icon = "ℹ️";
-            msg = responseData || "INFO";
-        }
-        detailsContent = responseData;
-    }
+        state.addWords.push(word);
+        input.value = '';
+        updateUI();
+        log(`✅ Added "${word}" to queue (${state.addWords.length} total)`, 'success');
+    };
 
-    const badge = document.createElement("span");
-    badge.className = `badge ${badgeClass} fs-6 fw-bold me-3 px-3 py-2`;
-    badge.innerHTML = `${icon} ${msg}`;
-
-    const details = document.createElement("div");
-    details.className = "small text-muted mt-2 p-2 bg-white rounded-2 border";
-    details.style.fontFamily = "'JetBrains Mono', Consolas, monospace";
-    details.style.fontSize = "0.8em";
-    details.style.maxHeight = "100px";
-    details.style.overflow = "auto";
-    details.textContent = detailsContent;
-
-    line.appendChild(badge);
-    line.appendChild(details);
-    els.logArea.prepend(line);
-    els.logArea.scrollTop = 0;
-
-    // Keep only last 50 entries
-    const entries = els.logArea.querySelectorAll("div");
-    if (entries.length > 50) {
-        Array.from(entries).slice(50).forEach(entry => entry.remove());
-    }
-}
-
-// ================================
-// UI STATE MANAGEMENT
-// ================================
-function toggleBusy(disabled) {
-    state.busy = disabled;
-    const buttons = [
-        els.mainAddWordBtn, els.mainAddSubmitBtn, els.mainAddClearBtn,
-        els.mainRemoveWordBtn, els.mainRemoveSubmitBtn, els.mainRemoveClearBtn,
-        els.refreshMainTableBtn, els.mainIncrementSelectedBtn, els.mainDeleteSelectedBtn,
-        els.mainTableSearchBtn
-    ];
-    buttons.forEach(btn => btn && (btn.disabled = disabled));
-}
-
-function showLoading(show = true) {
-    const overlay = els.globalLoadingOverlay;
-    if (show) {
-        overlay?.classList.remove("d-none");
-    } else {
-        overlay?.classList.add("d-none");
-    }
-}
-
-// ================================
-// ADD WORDS SECTION
-// ================================
-function handleAddWords() {
-    const words = parseWordsInput(els.addWordsInput.value);
-    if (!words.length) return;
-
-    const newWords = words.filter(w => !state.addWords.includes(w));
-    state.addWords.push(...newWords);
-
-    els.addWordsInput.value = "";
-    renderChips(els.mainAddWordsChips, state.addWords);
-    log(`${newWords.length} word(s) queued for addition`, "info");
-}
-
-function initAddSection() {
-    els.mainAddWordBtn?.addEventListener("click", handleAddWords);
-    els.addWordsInput?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
+    document.getElementById('addInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
             e.preventDefault();
-            handleAddWords();
+            document.getElementById('addQueueBtn').click();
         }
     });
 
-    els.mainAddClearBtn?.addEventListener("click", () => {
+    document.getElementById('addSubmitBtn').onclick = () => {
+        if (!state.addWords.length) return;
+        showConfirmModal(
+            'Add Words to Dictionary',
+            `Add ${state.addWords.length} word${state.addWords.length > 1 ? 's' : ''} to dictionary?`,
+            state.addWords,
+            async () => {
+                const res = await apiClient.post(API_ENDPOINTS.MAIN_DICTIONARY.ADD, { words: state.addWords });
+                log(`✅ Added ${res.created?.length || 0} words successfully`, 'success');
+                state.addWords = [];
+                updateUI();
+                reloadTable();
+            }
+        );
+    };
+
+    document.getElementById('addClearBtn').onclick = () => {
         state.addWords = [];
-        renderChips(els.mainAddWordsChips, state.addWords);
-    });
+        updateUI();
+        log('Add queue cleared', 'info');
+    };
 
-    els.mainAddSubmitBtn?.addEventListener("click", async () => {
-        if (!state.addWords.length) {
-            log("No words queued to add.", "warn");
+    // Remove single word workflow
+    document.getElementById('removeQueueBtn').onclick = () => {
+        const input = document.getElementById('removeInput');
+        const word = input.value.trim();
+        if (!word) {
+            log('Please enter a word', 'warning');
             return;
         }
-
-        if (!confirm(`Add ${state.addWords.length} word(s) to CORE dictionary?\n\n⚡ Changes apply instantly to all clients.`)) {
+        if (state.removeWords.includes(word)) {
+            log(`"${word}" already in queue`, 'warning');
             return;
         }
+        state.removeWords.push(word);
+        input.value = '';
+        updateUI();
+        log(`✅ Added "${word}" to remove queue (${state.removeWords.length} total)`, 'warning');
+    };
 
-        toggleBusy(true);
-        showLoading(true);
-        try {
-            const data = await apiClient.post(API_ENDPOINTS.MAIN_DICTIONARY.ADD, { words: state.addWords });
-            log(data, "success");  // ✅ RAW backend response
-            state.addWords = [];
-            renderChips(els.mainAddWordsChips, state.addWords);
-            reloadTable(true);
-        } catch (err) {
-            log(err.response?.data || err.message || err, "error");  // ✅ RAW backend error
-        } finally {
-            toggleBusy(false);
-            showLoading(false);
-        }
-    });
-}
-
-// ================================
-// REMOVE WORDS SECTION
-// ================================
-function handleRemoveWords() {
-    const words = parseWordsInput(els.removeWordsInput.value);
-    if (!words.length) return;
-
-    const newWords = words.filter(w => !state.removeWords.includes(w));
-    state.removeWords.push(...newWords);
-
-    els.removeWordsInput.value = "";
-    renderChips(els.mainRemoveWordsChips, state.removeWords);
-    log(`${newWords.length} word(s) queued for removal`, "info");
-}
-
-function initRemoveSection() {
-    els.mainRemoveWordBtn?.addEventListener("click", handleRemoveWords);
-    els.removeWordsInput?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
+    document.getElementById('removeInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
             e.preventDefault();
-            handleRemoveWords();
+            document.getElementById('removeQueueBtn').click();
         }
     });
 
-    els.mainRemoveClearBtn?.addEventListener("click", () => {
+    document.getElementById('removeSubmitBtn').onclick = () => {
+        if (!state.removeWords.length) return;
+        showConfirmModal(
+            'Delete Words from Dictionary',
+            `Delete ${state.removeWords.length} word${state.removeWords.length > 1 ? 's' : ''} permanently?`,
+            state.removeWords,
+            async () => {
+                const res = await apiClient.delete(API_ENDPOINTS.MAIN_DICTIONARY.DELETE, { words: state.removeWords });
+                log(`✅ Deleted ${res.deleted?.length || 0} words successfully`, 'success');
+                state.removeWords = [];
+                updateUI();
+                reloadTable();
+            }
+        );
+    };
+
+    document.getElementById('removeClearBtn').onclick = () => {
         state.removeWords = [];
-        renderChips(els.mainRemoveWordsChips, state.removeWords);
-    });
+        updateUI();
+        log('Remove queue cleared', 'info');
+    };
+};
 
-    els.mainRemoveSubmitBtn?.addEventListener("click", async () => {
-        if (!state.removeWords.length) {
-            log("No words queued to remove.", "warn");
-            return;
-        }
-
-        if (!confirm(`PERMANENTLY delete ${state.removeWords.length} word(s) from CORE dictionary?\n\n⚠️ This cannot be undone.`)) {
-            return;
-        }
-
-        toggleBusy(true);
-        showLoading(true);
-        try {
-            const data = await apiClient.delete(API_ENDPOINTS.MAIN_DICTIONARY.DELETE, { words: state.removeWords });
-            log(data, "success");  // ✅ RAW backend response
-            state.removeWords = [];
-            renderChips(els.mainRemoveWordsChips, state.removeWords);
-            reloadTable(true);
-        } catch (err) {
-            log(err.response?.data || err.message || err, "error");  // ✅ RAW backend error
-        } finally {
-            toggleBusy(false);
-            showLoading(false);
-        }
-    });
-}
-
-// ================================
-// TABLE MANAGEMENT - RAW DATA
-// ================================
-function initTable() {
+const initTable = () => {
     if (state.table) {
         state.table.destroy();
-        state.table = null;
     }
 
-    state.table = $("#mainWordsTable").DataTable({
+    state.table = $('#wordsTable').DataTable({
         destroy: true,
         processing: true,
         serverSide: true,
-        searching: false,
         pageLength: 25,
-        lengthMenu: [10, 25, 50, 100],
-        order: [[1, "asc"]],
-
+        searching: false,
+        order: [[2, 'asc']],
         language: {
-            processing: '<div class="spinner-border text-primary me-2" role="status"></div>🔄 Loading dictionary...',
-            lengthMenu: "Show _MENU_ entries",
-            info: "Showing _START_ to _END_ of _TOTAL_ words",
-            infoEmpty: "No words found",
-            infoFiltered: "(filtered from _MAX_ total words)",
-            emptyTable: '<div class="text-center py-5"><i class="bi bi-book fs-1 text-muted mb-3"></i><div class="text-muted">No dictionary words found</div><small class="text-muted">Add your first verified words above</small></div>',
-            zeroRecords: '<div class="text-center py-4"><i class="bi bi-search fs-1 text-muted mb-3"></i><div class="text-muted">No matching words found</div></div>',
-            paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+            processing: '<i class="bi bi-hourglass-split"></i> Loading...',
+            emptyTable: '<div class="text-center p-4"><i class="bi bi-inbox fs-1 text-muted mb-3"></i><p class="text-muted">No words found</p></div>'
         },
-
-        ajax: function (data, callback) {
-            const search = els.mainTableSearchInput?.value.trim() || '';
-            const requestData = {
+        ajax: (data, callback, settings) => {
+            apiClient.get(API_ENDPOINTS.MAIN_DICTIONARY.LIST, {
                 draw: data.draw,
                 start: data.start,
                 length: data.length,
-                search: search
-            };
+                search: document.getElementById('searchInput').value || ''
+            }).then(res => {
+                const tableData = (res.data || []).map((row, index) => ({
+                    word: row.word || '',
+                    frequency: row.frequency || 0,
+                    added_by: row.added_by || 'System',
+                    added: row.added || row.added_at || 'N/A',
+                    serial: data.start + index + 1
+                })).filter(row => row.word);
 
-            apiClient.get(API_ENDPOINTS.MAIN_DICTIONARY.LIST, requestData)
-                .then(json => {
-                    const safeResponse = {
-                        draw: json.draw || data.draw || 1,
-                        recordsTotal: parseInt(json.recordsTotal) || 0,
-                        recordsFiltered: parseInt(json.recordsFiltered) || 0,
-                        data: normalizeTableData(json.data || [])
-                    };
-                    callback(safeResponse);
-                })
-                .catch(err => {
-                    console.error('Table load error:', err);
-                    log(`Table load failed: ${err.message}`, "error");
-                    callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+                callback({
+                    draw: res.draw || data.draw,
+                    recordsTotal: res.recordsTotal || 0,
+                    recordsFiltered: res.recordsFiltered || 0,
+                    data: tableData
                 });
+            }).catch(err => {
+                log('Table load failed: ' + (err.message || 'Unknown error'), 'error');
+                callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+            });
         },
-
-        // ✅ RAW BACKEND DATA - NO FORMATTING
         columns: [
             {
-                data: null, orderable: false, searchable: false, width: "50px", className: "text-center",
-                render: (data, type, row) => {
-                    const word = row?.word || '';
-                    const checked = state.selectedWords.has(word) ? "checked" : "";
-                    return `<input type="checkbox" class="form-check-input row-select" value="${escapeHtml(word)}" ${checked}>`;
-                }
-            },
-            {
-                data: "word",
-                className: "fw-semibold",
-                width: "35%",
-                render: (data) => escapeHtml(data) || ''  // ✅ RAW word
-            },
-            {
-                data: "frequency",
-                className: "text-center text-nowrap",
-                width: "15%",
-                render: (data) => {
-                    const freq = data || 0;  // ✅ RAW frequency
-                    const badgeClass = freq > 100 ? 'bg-success' : freq > 10 ? 'bg-warning' : 'bg-secondary';
-                    return `<span class="badge ${badgeClass} fs-6 px-3">${freq}</span>`;
-                }
-            },
-            {
-                data: "added_by",
-                width: "20%",
-                render: (data) => escapeHtml(data) || 'System'  // ✅ RAW added_by
-            },
-            {
-                data: "added",
-                width: "25%",
-                render: (data) => escapeHtml(data) || 'N/A'  // ✅ RAW backend date/timestamp - NO FORMATTING
-            },
-            {
-                data: null,
                 orderable: false,
-                width: "50px",
-                className: "text-center",
-                render: () => '<i class="bi bi-grip-vertical text-muted fs-5"></i>'
-            }
+                width: '40px',
+                render: (data, type, row) => `<input type="checkbox" class="form-check-input row-select" value="${escapeHtml(row.word)}">`
+            },
+            {
+                orderable: false,
+                width: '60px',
+                className: 'text-center',
+                render: (data, type, row) => type === 'display' ? row.serial : ''
+            },
+            { data: 'word', className: 'fw-medium' },
+            {
+                data: 'frequency',
+                className: 'text-center',
+                render: freq => `<span class="badge ${freq > 50 ? 'bg-success' : freq > 10 ? 'bg-warning' : 'bg-secondary'}">${freq}</span>`
+            },
+            { data: 'added_by' },
+            { data: 'added' }
         ],
-
-        drawCallback: () => {
+        drawCallback: function () {
             updateStats();
-            syncSelectAllCheckbox();
+            bindRowEvents();
         }
     });
+};
 
-    // Row selection events
-    $("#mainWordsTable tbody")
-        .off("change.row-select click.row")
-        .on("change.row-select", "input.row-select", function () {
-            const word = this.value;
-            if (this.checked) {
-                state.selectedWords.add(word);
-                $(this).closest("tr").addClass("table-active bg-success-subtle");
-            } else {
-                state.selectedWords.delete(word);
-                $(this).closest("tr").removeClass("table-active bg-success-subtle");
-            }
-            syncSelectAllCheckbox();
-        })
-        .on("click.row", "tr", function (e) {
-            if (e.target.type !== "checkbox" && !$(e.target).closest(".row-select").length) {
-                $(this).find(".row-select").trigger("click");
-            }
-        });
-}
-
-function reloadTable(resetPaging = true) {
-    state.table?.ajax.reload(null, resetPaging);
-}
-
-function syncSelectAllCheckbox() {
-    const checkboxes = $("#mainWordsTable tbody input.row-select");
-    if (!checkboxes.length) {
-        els.mainSelectAll.checked = false;
-        els.mainSelectAll.indeterminate = false;
-        return;
-    }
-
-    const checkedCount = checkboxes.filter(':checked').length;
-    els.mainSelectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-    els.mainSelectAll.checked = checkedCount === checkboxes.length;
-}
-
-function updateStats() {
+const reloadTable = () => {
     if (state.table) {
-        const info = state.table.page.info();
-        els.totalWordsCount.textContent = info.recordsTotal?.toLocaleString() || "--";
-    }
-}
-
-// ================================
-// BULK ACTIONS
-// ================================
-function initBulkActions() {
-    els.mainIncrementSelectedBtn?.addEventListener("click", async () => {
-        const words = Array.from(state.selectedWords);
-        if (!words.length) return log("No rows selected.", "warn");
-
-        toggleBusy(true);
-        showLoading(true);
-        try {
-            const promises = words.map(word => apiClient.post(API_ENDPOINTS.MAIN_DICTIONARY.INCREMENT(word)));
-            await Promise.allSettled(promises);
-            log(`Incremented ${words.length} words`, "success");
-            reloadTable(false);
-        } catch (err) {
-            log(err.response?.data || err.message || err, "error");  // ✅ RAW backend error
-        } finally {
-            toggleBusy(false);
-            showLoading(false);
-        }
-    });
-
-    els.mainDeleteSelectedBtn?.addEventListener("click", async () => {
-        const words = Array.from(state.selectedWords);
-        if (!words.length) return log("No rows selected.", "warn");
-        if (!confirm(`Delete ${words.length} selected words?`)) return;
-
-        toggleBusy(true);
-        showLoading(true);
-        try {
-            const data = await apiClient.delete(API_ENDPOINTS.MAIN_DICTIONARY.DELETE, { words });
-            log(data, "success");  // ✅ RAW backend response
-            state.selectedWords.clear();
-            reloadTable(false);
-        } catch (err) {
-            log(err.response?.data || err.message || err, "error");  // ✅ RAW backend error
-        } finally {
-            toggleBusy(false);
-            showLoading(false);
-        }
-    });
-
-    els.mainSelectAll?.addEventListener("change", function () {
-        const checked = this.checked;
-        $("#mainWordsTable tbody input.row-select").each(function () {
-            this.checked = checked;
-            const word = this.value;
-            if (checked) {
-                state.selectedWords.add(word);
-                $(this).closest("tr").addClass("table-active bg-success-subtle");
-            } else {
-                state.selectedWords.delete(word);
-                $(this).closest("tr").removeClass("table-active bg-success-subtle");
-            }
-        });
-        syncSelectAllCheckbox();
-    });
-}
-
-// ================================
-// SEARCH & REFRESH
-// ================================
-function initSearchRefresh() {
-    els.refreshMainTableBtn?.addEventListener("click", () => {
-        reloadTable(true);
-        log("Table refreshed", "info");
-    });
-
-    els.mainTableSearchBtn?.addEventListener("click", () => reloadTable(true));
-    els.mainTableSearchInput?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            reloadTable(true);
-        }
-    });
-}
-
-// ================================
-// KEYBOARD SHORTCUTS
-// ================================
-function initKeyboardShortcuts() {
-    document.addEventListener("keydown", (e) => {
-        if (state.busy || (e.target.tagName === 'INPUT' && e.target !== els.mainTableSearchInput)) return;
-
-        if (e.ctrlKey && e.key === "F5") {
-            e.preventDefault();
-            reloadTable(true);
-        } else if (e.key === "F2" && state.selectedWords.size > 0) {
-            e.preventDefault();
-            els.mainIncrementSelectedBtn?.click();
-        } else if (e.key === "Delete" && state.selectedWords.size > 0) {
-            e.preventDefault();
-            els.mainDeleteSelectedBtn?.click();
-        }
-    });
-}
-
-// ================================
-// GLOBAL CHIP REMOVAL
-// ================================
-window.mainDict = {
-    removeChip(containerId, idx) {
-        if (containerId === "mainAddWordsChips") {
-            state.addWords.splice(idx, 1);
-            renderChips(els.mainAddWordsChips, state.addWords);
-        } else if (containerId === "mainRemoveWordsChips") {
-            state.removeWords.splice(idx, 1);
-            renderChips(els.mainRemoveWordsChips, state.removeWords);
-        }
+        state.table.ajax.reload(null, false);
     }
 };
 
-// ================================
-// INITIALIZATION
-// ================================
-$(document).ready(() => {
-    initAddSection();
-    initRemoveSection();
-    initTable();
-    initBulkActions();
-    initSearchRefresh();
-    initKeyboardShortcuts();
+const updateStats = () => {
+    const info = state.table?.page.info();
+    if (info) {
+        document.getElementById('totalWords').textContent = info.recordsTotal.toLocaleString();
+    }
+    updateUI();
+};
 
-    updateStats();
-    log("🚀 Main Dictionary Dashboard loaded successfully", "success");
+const bindRowEvents = () => {
+    $('#wordsTable tbody').off('change.row-select click.row')
+        .on('change.row-select', '.row-select', function () {
+            const word = this.value;
+            if (this.checked) {
+                state.selectedWords.add(word);
+                $(this).closest('tr').addClass('table-active');
+            } else {
+                state.selectedWords.delete(word);
+                $(this).closest('tr').removeClass('table-active');
+            }
+            updateUI();
+        })
+        .on('click.row', 'tr', function (e) {
+            if (!$(e.target).is('input[type="checkbox"]')) {
+                $(this).find('.row-select').trigger('click');
+            }
+        });
+};
+
+const initActions = () => {
+    document.getElementById('refreshBtn').onclick = () => {
+        reloadTable();
+        log('Table refreshed', 'info');
+    };
+
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            reloadTable();
+        }
+    });
+
+    document.getElementById('searchBtn').onclick = reloadTable;
+
+    document.getElementById('bulkDeleteBtn').onclick = () => {
+        const words = Array.from(state.selectedWords);
+        if (!words.length) return log('No words selected', 'warning');
+
+        showConfirmModal(
+            'Delete Selected Words',
+            `Delete ${words.length} selected word${words.length > 1 ? 's' : ''} permanently?`,
+            words,
+            async () => {
+                await apiClient.delete(API_ENDPOINTS.MAIN_DICTIONARY.DELETE, { words });
+                log(`✅ Deleted ${words.length} selected words`, 'success');
+                state.selectedWords.clear();
+                reloadTable();
+            }
+        );
+    };
+
+    document.getElementById('selectAll').onchange = function () {
+        const isChecked = this.checked;
+        state.selectedWords.clear();
+        $('#wordsTable tbody .row-select').prop('checked', isChecked).trigger('change');
+        log(isChecked ? 'All visible rows selected' : 'Selection cleared', 'info');
+    };
+};
+
+window.app = {
+    removeFromAdd(index) {
+        const word = state.addWords.splice(index, 1)[0];
+        updateUI();
+        log(`Removed "${word}" from add queue`, 'info');
+    },
+    removeFromRemove(index) {
+        const word = state.removeWords.splice(index, 1)[0];
+        updateUI();
+        log(`Removed "${word}" from remove queue`, 'info');
+    }
+};
+
+$(document).ready(() => {
+    updateUI();
+    initPanels();
+    initTable();
+    initActions();
+    log('✅ Main Dictionary Dashboard Ready', 'success');
 });
