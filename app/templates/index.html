@@ -48,7 +48,50 @@
                         <div class="tool-icon mb-3">📄</div>
                         <h5 class="card-title" data-i18n="tools.files.title">File Utilities</h5>
                         <p class="card-text text-muted" data-i18n="tools.files.description"></p>
-                        <a href="/sort-doc/" class="btn btn-primary" data-i18n="common.open_tool">Open Tool</a>
+                        <a href="{{ url_for('template_routes.sort_doc_ui') }}" class="btn btn-primary"
+                            data-i18n="common.open_tool">
+                            Open Tool
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-1">
+            <!-- Spellcheck (User Dictionary) Card -->
+            <div class="col-md-4">
+                <div class="card tool-card h-100 text-center p-4">
+                    <div class="card-body">
+                        <div class="tool-icon mb-3">🔤</div>
+                        <h5 class="card-title" data-i18n="tools.spellcheck_user.title">
+                            Spellcheck — User Dictionary
+                        </h5>
+                        <p class="card-text text-muted" data-i18n="tools.spellcheck_user.description">
+                            Manage user-specific words and run spellchecks.
+                        </p>
+                        <a href="{{ url_for('template_routes.spellcheck_user_dictionary') }}" class="btn btn-primary"
+                            data-i18n="common.open_tool">
+                            Open Tool
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Dictionary Card -->
+            <div class="col-md-4">
+                <div class="card tool-card h-100 text-center p-4">
+                    <div class="card-body">
+                        <div class="tool-icon mb-3">📚</div>
+                        <h5 class="card-title" data-i18n="tools.dictionary_main.title">
+                            Main Dictionary
+                        </h5>
+                        <p class="card-text text-muted" data-i18n="tools.dictionary_main.description">
+                            View and edit main dictionary entries used by spellcheck.
+                        </p>
+                        <a href="{{ url_for('template_routes.spellcheck_admin_dictionary') }}" class="btn btn-primary"
+                            data-i18n="common.open_tool">
+                            Open Tool
+                        </a>
                     </div>
                 </div>
             </div>

@@ -30,7 +30,7 @@ def spellcheck_user_dictionary():
 
 
 # ==================================================sortwords routes===========================================
-@template_routes_bp.route("/", methods=["GET"])
+@template_routes_bp.route("/sort_doc_ui", methods=["GET"])
 def sort_doc_ui():
     return render_template("sortwords/upload_sort.html")
 
