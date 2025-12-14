@@ -39,24 +39,114 @@ const els = {
     selectAllRows: document.getElementById("selectAllRows"),
 };
 
-// -----------------------------
-// Helpers
-// -----------------------------
-function log(message, type = "info") {
+
+function log(responseData, type = "info") {
     const line = document.createElement("div");
-    line.className = "mb-1";
+    line.className = "mb-2 p-2 bg-light rounded-3 border-start border-3";
+
+    // Determine type from response structure or explicit type
+    let msg = "", badgeClass = "bg-secondary", icon = "ℹ️";
+
+    if (type === "ok" || type === "success") {
+        badgeClass = "bg-success border-success";
+        icon = "✅";
+        msg = "SUCCESS";
+    } else if (type === "err" || type === "error") {
+        badgeClass = "bg-danger border-danger";
+        icon = "❌";
+        msg = "ERROR";
+    } else if (type === "warn") {
+        badgeClass = "bg-warning border-warning text-dark";
+        icon = "⚠️";
+        msg = "WARNING";
+    } else {
+        // Auto-detect from response data
+        const added = Object.keys(responseData.added || {}).length;
+        const updated = Object.keys(responseData.updated || {}).length;
+        const skipped = (responseData.skipped || []).length;
+
+        if (added + updated > 0) {
+            badgeClass = "bg-success border-success";
+            icon = "✅";
+            msg = `SUCCESS: ${added} added, ${updated} updated`;
+
+            // Show frequency details
+            const freqDetails = [];
+            Object.entries(responseData.updated || {}).forEach(([word, freq]) => {
+                freqDetails.push(`${word}(${freq})`);
+            });
+            if (freqDetails.length) msg += ` [${freqDetails.slice(0, 3).join(', ')}${freqDetails.length > 3 ? '...' : ''}]`;
+
+        } else if (skipped > 0) {
+            badgeClass = "bg-warning border-warning text-dark";
+            icon = "⚠️";
+            msg = `SKIPPED: ${skipped} words`;
+        } else {
+            badgeClass = "bg-secondary border-secondary";
+            icon = "ℹ️";
+            msg = "INFO";
+        }
+    }
+
+    // Build log line
     const badge = document.createElement("span");
-    badge.className = "badge me-1 bg-secondary";
-    if (type === "ok") badge.className = "badge me-1 bg-success";
-    if (type === "err") badge.className = "badge me-1 bg-danger";
-    if (type === "warn") badge.className = "badge me-1 bg-warning text-dark";
-    badge.textContent = type.toUpperCase();
-    const text = document.createElement("span");
-    text.textContent = " " + message;
+    badge.className = `badge ${badgeClass} fs-6 fw-bold me-2 px-2 py-1`;
+    badge.innerHTML = `${icon} ${msg}`;
+
+    const details = document.createElement("div");
+    details.className = "small text-muted mt-1";
+
+    if (typeof responseData === "object" && responseData !== null) {
+        details.innerHTML = `
+            Added: ${Object.keys(responseData.added || {}).length}<br>
+            Updated: ${Object.keys(responseData.updated || {}).length}<br>
+            Skipped: ${(responseData.skipped || []).length}
+        `;
+    } else {
+        details.textContent = responseData;
+    }
+
     line.appendChild(badge);
-    line.appendChild(text);
+    line.appendChild(details);
     els.logArea.prepend(line);
+
+    // Auto-scroll to top
+    els.logArea.scrollTop = 0;
 }
+
+// -----------------------------
+// Updated addSubmitBtn handler
+// -----------------------------
+els.addSubmitBtn.addEventListener("click", async () => {
+    if (!state.addWords.length) {
+        log("No words queued to add.", "warn");
+        return;
+    }
+    toggleBusy(true);
+    try {
+        const data = await apiClient.post(
+            API_ENDPOINTS.USER_DICTIONARY.ADD,
+            { words: state.addWords }
+        );
+
+        // ✅ Pass RAW response to log() - auto-detects success/info
+        log(data, "ok");  // "ok" ensures green badge
+
+        state.addWords = [];
+        renderChips(els.addWordsChips, state.addWords, () => { });
+        reloadTable();
+    } catch (err) {
+        // Pass error response or message
+        log(err.response?.data || err.message || err, "err");
+    } finally {
+        toggleBusy(false);
+    }
+});
+
+
+
+
+
 
 function renderChips(container, items, onRemove) {
     container.innerHTML = "";
@@ -130,6 +220,7 @@ function initAddSection() {
         renderChips(els.addWordsChips, state.addWords, () => { });
     });
 
+    // Update the addSubmitBtn event listener in initAddSection()
     els.addSubmitBtn.addEventListener("click", async () => {
         if (!state.addWords.length) {
             log("No words queued to add.", "warn");
@@ -141,9 +232,24 @@ function initAddSection() {
                 API_ENDPOINTS.USER_DICTIONARY.ADD,
                 { words: state.addWords }
             );
-            const added = data.added || [];
+
+            // ✅ Updated to handle new dict format with frequency
+            const added = Object.keys(data.added || {});
+            const updated = Object.keys(data.updated || {});
             const skipped = data.skipped || [];
-            log(`Add: ${added.length} added, ${skipped.length} skipped.`, "ok");
+
+            let logMsg = `Add: ${added.length} added`;
+            if (updated.length) logMsg += `, ${updated.length} updated`;
+            if (skipped.length) logMsg += `, ${skipped.length} skipped`;
+
+            // Show frequency details for updated words
+            if (updated.length) {
+                const freqDetails = updated.map(w => `${w}(${data.updated[w]})`).join(', ');
+                logMsg += ` [${freqDetails}]`;
+            }
+
+            log(logMsg, "ok");
+
             state.addWords = [];
             renderChips(els.addWordsChips, state.addWords, () => { });
             reloadTable();
@@ -153,6 +259,7 @@ function initAddSection() {
             toggleBusy(false);
         }
     });
+
 }
 
 // -----------------------------

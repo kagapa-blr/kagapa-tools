@@ -3,6 +3,7 @@ import re
 from collections import Counter
 
 from docx import Document  # python-docx
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.config.database import kagapa_tools_db as db
@@ -20,32 +21,74 @@ class UserDictionaryService:
     # -------------------------------------------------
     @staticmethod
     def add(words, added_by: str | None = None) -> dict:
+        """Add user words with atomic updates and frequency tracking."""
         if isinstance(words, str):
             words = [words]
 
         result = {
-            "added": [],
+            "added": {},
+            "updated": {},
             "skipped": []
         }
 
         for raw_word in words:
             word = normalize_word(raw_word)
+            if not word:
+                result["skipped"].append(raw_word)
+                continue
 
-            entry = UserAddedWord(
-                word=word,
-                added_by=added_by,
-                verified=False
+            # Check existing record FIRST to determine add/update
+            existing = (
+                db.session.execute(
+                    select(UserAddedWord).where(UserAddedWord.word == word)
+                )
+                .scalars()
+                .first()
             )
 
             try:
-                db.session.add(entry)
-                db.session.commit()
-                logger.info(f"User word submitted: {word}")
-                result["added"].append(word)
+                if existing:
+                    # Update existing
+                    old_freq = existing.frequency or 0
+                    existing.frequency = old_freq + 1
+                    if added_by and not existing.added_by:
+                        existing.added_by = added_by
+                    db.session.commit()
+                    result["updated"][word] = existing.frequency
+                    logger.info(
+                        f"[UserDictionaryService] User word frequency incremented: {word} -> {existing.frequency}")
+                else:
+                    # Add new
+                    entry = UserAddedWord(
+                        word=word,
+                        added_by=added_by,
+                        frequency=1,
+                        verified=False
+                    )
+                    db.session.add(entry)
+                    db.session.commit()
+                    result["added"][word] = 1
+                    logger.info(f"[UserDictionaryService] User word added: {word}")
+
             except IntegrityError:
                 db.session.rollback()
-                logger.warning(f"Duplicate user submission: {word}")
-                result["skipped"].append(word)
+                existing = (
+                    db.session.execute(
+                        select(UserAddedWord).where(UserAddedWord.word == word)
+                    )
+                    .scalars()
+                    .first()
+                )
+                if existing:
+                    old_freq = existing.frequency or 0
+                    existing.frequency = old_freq + 1
+                    db.session.commit()
+                    result["updated"][word] = existing.frequency
+                    logger.info(
+                        f"[UserDictionaryService] User word frequency incremented after race: {word} -> {existing.frequency}")
+                else:
+                    result["skipped"].append(word)
+                    logger.warning(f"[UserDictionaryService] Failed to add/update: {word}")
 
         return result
 
