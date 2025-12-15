@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config.database import kagapa_tools_db as db
 from app.models.spellcheck import UserAddedWord
-from app.services.dictionary_manager.main_dictionary_service import MainDictionaryService
+from app.services.spellcheck.main_dictionary_service import MainDictionaryService
 from app.utils.logger import setup_logger
 from app.utils.utils import normalize_word
 

@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 from app.config.database import kagapa_tools_db as db
 from app.models.spellcheck import MainDictionary
 from app.utils.logger import setup_logger
-from app.utils.utils import normalize_word
+from app.utils.utils import normalize_word, MainDictionaryBloom
 
 logger = setup_logger(name="MainDictionaryService")
 
@@ -10,7 +10,7 @@ logger = setup_logger(name="MainDictionaryService")
 class MainDictionaryService:
 
     # -------------------------------------------------
-    # CREATE (single OR bulk)
+    # CREATE (DB ONLY)
     # -------------------------------------------------
     @staticmethod
     def create(words, added_by: str | None = None) -> dict:
@@ -36,12 +36,22 @@ class MainDictionaryService:
                 db.session.commit()
                 logger.info(f"Main dictionary word added: {word}")
                 result["created"].append(word)
+
             except IntegrityError:
                 db.session.rollback()
                 logger.warning(f"Duplicate main dictionary word: {word}")
                 result["skipped"].append(word)
 
         return result
+
+    # -------------------------------------------------
+    # FAST EXISTENCE CHECK
+    # -------------------------------------------------
+    @staticmethod
+    def exists_fast(word: str) -> bool:
+        if not MainDictionaryBloom.might_exist(word):
+            return False
+        return MainDictionaryService.get_word(word) is not None
 
     # -------------------------------------------------
     # READ
@@ -60,16 +70,13 @@ class MainDictionaryService:
     ):
         base_query = MainDictionary.query
 
-        # Total records (without search)
         total_records = base_query.count()
 
-        # Apply search filter if provided
         if search:
             base_query = base_query.filter(
                 MainDictionary.word.ilike(f"%{search}%")
             )
 
-        # Records after filtering
         filtered_records = base_query.count()
 
         data = (
@@ -100,7 +107,7 @@ class MainDictionaryService:
         return True
 
     # -------------------------------------------------
-    # DELETE (single OR bulk)
+    # DELETE (DB ONLY)
     # -------------------------------------------------
     @staticmethod
     def delete(words) -> dict:

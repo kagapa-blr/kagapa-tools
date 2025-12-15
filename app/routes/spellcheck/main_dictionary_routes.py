@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template
 
 from app.services.spellcheck.main_dictionary_service import MainDictionaryService
 from app.utils.logger import setup_logger
+from app.utils.utils import MainDictionaryBloom
 
 logger = setup_logger(name="MainDictionaryRoutes")
 
@@ -9,7 +10,6 @@ main_dictionary_bp = Blueprint(
     "main_dictionary",
     __name__
 )
-
 
 
 # -------------------------------------------------
@@ -107,3 +107,42 @@ def delete_words():
 
     result = MainDictionaryService.delete(words)
     return jsonify(result)
+
+
+# -------------------------------------------------
+# CHECK WORD (Bloom + DB)
+# -------------------------------------------------
+@main_dictionary_bp.route("/check/<string:word>", methods=["GET"])
+def check_word(word):
+    """
+    Fast word existence check using Bloom filter
+    """
+    exists = MainDictionaryService.exists_fast(word)
+
+    return jsonify({
+        "word": word,
+        "exists": exists
+    })
+
+
+# -------------------------------------------------
+# INIT / RELOAD BLOOM FILTER
+# -------------------------------------------------
+@main_dictionary_bp.route("/bloom/reload", methods=["POST"])
+def reload_bloom():
+    """
+    Rebuild bloom filter from database
+    """
+    MainDictionaryBloom.reload_from_db()
+
+    logger.info("MainDictionary Bloom filter reloaded via API")
+
+    return jsonify({
+        "status": "success",
+        "message": "Bloom filter reloaded"
+    })
+
+
+@main_dictionary_bp.route("/bloom/stats", methods=["GET"])
+def bloom_stats():
+    return jsonify(MainDictionaryBloom.stats())
