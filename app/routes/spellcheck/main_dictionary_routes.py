@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, render_template
 
-from app.services.dictionary_manager.main_dictionary_service import MainDictionaryService
+from app.services.spellcheck.main_dictionary_service import MainDictionaryService
 from app.utils.logger import setup_logger
 
 logger = setup_logger(name="MainDictionaryRoutes")

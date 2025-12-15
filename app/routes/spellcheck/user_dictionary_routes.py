@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 
 from app.models.spellcheck import UserAddedWord
 from app.security.jwt_decorators import login_required
-from app.services.dictionary_manager.user_dictionary_service import (
+from app.services.spellcheck.user_dictionary_service import (
     UserDictionaryService,
     UserDictionaryBulkUploadService,
     ALLOWED_UPLOAD_EXTENSIONS,
