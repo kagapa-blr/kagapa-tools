@@ -1,35 +1,58 @@
-/* Login Section */
+body {
+    background: linear-gradient(135deg, #a691bd, #7d9ed6);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', sans-serif;
+}
+
 .login-section {
-    min-height: 80vh;
-    background: linear-gradient(135deg, #4b49ac, #3a38a0);
-    padding: 60px 15px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
 }
 
-/* Login Card */
-.login-card {
-    border-radius: 15px;
-    background-color: #ffffff;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+.card {
+    border-radius: 1rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    padding: 2rem;
 }
 
-.login-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+.form-control:focus {
+    border-color: #4e54c8;
+    box-shadow: 0 0 0 0.2rem rgba(78, 84, 200, 0.25);
 }
 
-/* Input Focus */
-.login-card .form-control:focus {
-    border-color: #4b49ac;
-    box-shadow: 0 0 0 0.2rem rgba(75, 73, 172, 0.25);
+.input-group-text {
+    background-color: #fff;
+    border-right: 0;
 }
 
-/* Button */
-.login-card .btn-primary {
-    background-color: #4b49ac;
-    border-color: #4b49ac;
+.btn-primary {
+    background-color: #4e54c8;
+    border: none;
 }
 
-.login-card .btn-primary:hover {
-    background-color: #3a38a0;
-    border-color: #3a38a0;
+.btn-primary:hover {
+    background-color: #3b40a4;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+.password-toggle {
+    cursor: pointer;
+}
+
+.text-center a {
+    color: #fff;
+    text-decoration: underline;
 }

@@ -2,57 +2,73 @@
 <html lang="kn" data-lang="kn">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kagapa Tools Login</title>
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}">
-    <!-- Custom Styles -->
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+
 </head>
 
 <body>
     {% include 'navbar.html' %}
 
     <!-- ================= LOGIN SECTION ================= -->
-    <section class="login-section d-flex align-items-center justify-content-center">
+    <section class="login-section">
         <div class="container">
             <div class="row justify-content-center">
-                <div class="col-md-5 col-lg-4">
-                    <div class="card shadow-sm p-4">
+                <div class="col-md-6 col-lg-5">
+                    <div class="card">
                         <div class="card-body">
-                            <h3 class="text-center mb-4">Login</h3>
+                            <h2 class="text-center mb-3">Login</h2>
+                            <p class="text-center text-muted mb-4">Enter your credentials</p>
 
                             <div id="login-error" class="alert alert-danger d-none text-center"></div>
 
                             <form id="login-form" novalidate>
                                 <input type="hidden" name="next" value="{{ next or '' }}">
 
+                                <!-- Username -->
                                 <div class="mb-3">
-                                    <label class="form-label">Username</label>
-                                    <input name="username" class="form-control" required>
+                                    <label for="login-username" class="form-label">Username</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa fa-user"></i></span>
+                                        <input type="text" id="login-username" name="username" class="form-control"
+                                            placeholder="Username" required>
+                                    </div>
                                 </div>
 
+                                <!-- Password -->
                                 <div class="mb-3">
-                                    <label class="form-label">Password</label>
-                                    <input name="password" type="password" class="form-control" required>
+                                    <label for="login-password" class="form-label">Password</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa fa-lock"></i></span>
+                                        <input type="password" id="login-password" name="password" class="form-control"
+                                            placeholder="Password" required>
+                                        <span class="input-group-text password-toggle" onclick="togglePassword()">
+                                            <i id="password-icon" class="fa fa-eye"></i>
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div class="d-grid mt-3">
-                                    <button class="btn btn-primary">Login</button>
+                                    <button type="submit" class="btn btn-primary btn-lg">Login</button>
                                 </div>
                             </form>
 
                             <div class="text-center mt-3">
-                                <small class="text-muted">Don’t have an account?</small><br>
-                                <button class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#signupModal">
+                                <span class="text-muted">Don’t have an account? </span>
+                                <button type="button" class="btn btn-link p-0" data-bs-toggle="modal"
+                                    data-bs-target="#signupModal">
                                     Create Account
                                 </button>
+
                             </div>
 
                             <div class="text-center text-muted small mt-2">
@@ -68,8 +84,8 @@
     <!-- ================= SIGNUP MODAL ================= -->
     <div class="modal fade" id="signupModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
+            <div class="modal-content p-4">
+                <div class="modal-header border-0">
                     <h5 class="modal-title">Create Account</h5>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -79,28 +95,49 @@
                     <div id="signup-success" class="alert alert-success d-none"></div>
 
                     <form id="signup-form" novalidate>
+                        <!-- Username -->
                         <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input id="su-username" class="form-control" required>
+                            <label for="su-username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa fa-user"></i></span>
+                                <input id="su-username" type="text" class="form-control" placeholder="Username"
+                                    required>
+                            </div>
                         </div>
 
+                        <!-- Password -->
                         <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input id="su-password" type="password" class="form-control" required>
+                            <label for="su-password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa fa-lock"></i></span>
+                                <input id="su-password" type="password" class="form-control" placeholder="Password"
+                                    required>
+                                <span class="input-group-text password-toggle" onclick="toggleSignUpPassword()">
+                                    <i id="signup-password-icon" class="fa fa-eye"></i>
+                                </span>
+                            </div>
                         </div>
 
+                        <!-- Email -->
                         <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input id="su-email" type="email" class="form-control">
+                            <label for="su-email" class="form-label">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa fa-envelope"></i></span>
+                                <input id="su-email" type="email" class="form-control" placeholder="Email">
+                            </div>
                         </div>
 
+                        <!-- Phone -->
                         <div class="mb-3">
-                            <label class="form-label">Phone</label>
-                            <input id="su-phone" class="form-control">
+                            <label for="su-phone" class="form-label">Phone</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa fa-phone"></i></span>
+                                <input id="su-phone" type="text" class="form-control" placeholder="Phone">
+                            </div>
                         </div>
 
-                        <div class="d-grid">
-                            <button class="btn btn-success">Sign Up</button>
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-success btn-lg">Sign Up</button>
                         </div>
                     </form>
                 </div>
@@ -114,6 +151,32 @@
     <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/language-switch.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/login.js') }}"></script>
+
+    <script>
+        function togglePassword() {
+            const pw = document.getElementById("login-password");
+            const icon = document.getElementById("password-icon");
+            if (pw.type === "password") {
+                pw.type = "text";
+                icon.classList.replace("fa-eye", "fa-eye-slash");
+            } else {
+                pw.type = "password";
+                icon.classList.replace("fa-eye-slash", "fa-eye");
+            }
+        }
+
+        function toggleSignUpPassword() {
+            const pw = document.getElementById("su-password");
+            const icon = document.getElementById("signup-password-icon");
+            if (pw.type === "password") {
+                pw.type = "text";
+                icon.classList.replace("fa-eye", "fa-eye-slash");
+            } else {
+                pw.type = "password";
+                icon.classList.replace("fa-eye-slash", "fa-eye");
+            }
+        }
+    </script>
 </body>
 
 </html>
