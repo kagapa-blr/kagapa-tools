@@ -1,5 +1,5 @@
 import apiClient from "./apiClient.js";
-import API_ENDPOINTS from "./apiEndpoints.js"; // centralized endpoints
+import API_ENDPOINTS from "./apiEndpoints.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("login-form");
@@ -8,15 +8,37 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!form) return;
 
     // -----------------------------
-    // Check if already logged in
+    // Resolve safe redirect URL
+    // -----------------------------
+    const urlParams = new URLSearchParams(window.location.search);
+    let nextUrl = urlParams.get("next") || "/";
+
+    // Prevent redirect loops or unsafe URLs
+    if (nextUrl.startsWith("/api") || nextUrl.includes("/login") || nextUrl.includes("undefined")) {
+        nextUrl = "/";
+    }
+
+    console.log("[LOGIN] nextUrl resolved to:", nextUrl);
+
+    // -----------------------------
+    // Token exists → verify
     // -----------------------------
     const token = localStorage.getItem("access_token");
     if (token) {
-        showError("You are already logged in. Please logout first to login again.");
+        apiClient.get(API_ENDPOINTS.AUTH.ME)
+            .then(() => {
+                console.log("[LOGIN] Token valid, redirecting to:", nextUrl);
+                window.location.replace(nextUrl);
+            })
+            .catch(() => {
+                console.warn("[LOGIN] Token invalid, clearing");
+                localStorage.removeItem("access_token");
+            });
+        return;
     }
 
     // -----------------------------
-    // Form submit handler
+    // Login submit handler
     // -----------------------------
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -30,40 +52,37 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Include next URL in POST body
+        const body = { username, password, next: nextUrl };
+
         try {
-            const res = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { username, password });
+            const res = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, body);
 
-            if (res.success && res.access_token) {
-                // Store JWT in localStorage
-                localStorage.setItem("access_token", res.access_token);
+            console.log("[LOGIN] API response:", res);
 
-                // Redirect to homepage or API-provided path
-                window.location.href = res.redirect || "/";
+            if (res?.success) {
+                if (res.access_token) localStorage.setItem("access_token", res.access_token);
+
+                // Use backend-provided redirect_to or fallback
+                window.location.replace(res.redirect_to || nextUrl);
             } else {
-                showError(res.message || "Login failed.");
+                showError(res?.message || "Login failed.");
             }
         } catch (err) {
-            if (err.data?.message) {
-                showError(err.data.message);
-            } else if (err.message) {
-                showError(err.message);
-            } else {
-                showError("Login failed due to unknown error.");
-            }
+            console.error("[LOGIN] Login error:", err);
+            showError(err?.data?.message || err.message || "Login failed.");
         }
     });
 
     // -----------------------------
-    // Error UI helpers
+    // UI helpers
     // -----------------------------
     function showError(msg) {
-        if (!errorBox) return;
         errorBox.textContent = msg;
         errorBox.classList.remove("d-none");
     }
 
     function hideError() {
-        if (!errorBox) return;
         errorBox.textContent = "";
         errorBox.classList.add("d-none");
     }

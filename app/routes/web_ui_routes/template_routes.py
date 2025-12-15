@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template
 
+from app.security.jwt_decorators import login_required
 from app.utils.logger import setup_logger
 
 logger = setup_logger(name="template_routes")
@@ -22,6 +23,7 @@ def spellcheck_admin_dictionary():
 
 
 @template_routes_bp.route("/spellcheck/user/dictionary", methods=["GET"])
+@login_required
 def spellcheck_user_dictionary():
     return render_template("dictionary/user_dictionary.html")
 
