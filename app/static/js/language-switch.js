@@ -3,6 +3,7 @@
  * --------------------------------
  * Default Language: Kannada (kn)
  */
+import { showLoader, hideLoader } from "./loader.js";
 
 (function () {
     const DEFAULT_LANG = 'kn';   // ✅ Default language
@@ -14,6 +15,8 @@
 
     // Load language JSON and apply translations
     async function loadLanguage(lang) {
+        showLoader();
+
         try {
             const response = await fetch(`${LANG_PATH}${lang}.json`, { cache: 'no-store' });
 
@@ -22,6 +25,7 @@
             }
 
             const translations = await response.json();
+
             applyTranslations(translations);
             updateUIState(lang);
 
@@ -31,10 +35,12 @@
         } catch (error) {
             console.error('[Language Switch]', error);
 
-            // Fallback to default language if not already trying
+            // Fallback to default language
             if (lang !== DEFAULT_LANG) {
-                loadLanguage(DEFAULT_LANG);
+                await loadLanguage(DEFAULT_LANG);
             }
+        } finally {
+            hideLoader();
         }
     }
 
@@ -49,7 +55,9 @@
 
     // Resolve nested JSON keys like 'hero.title'
     function resolveKey(obj, path) {
-        return path.split('.').reduce((acc, key) => (acc && acc[key] ? acc[key] : null), obj);
+        return path
+            .split('.')
+            .reduce((acc, key) => (acc && acc[key] ? acc[key] : null), obj);
     }
 
     // Update active state on language buttons

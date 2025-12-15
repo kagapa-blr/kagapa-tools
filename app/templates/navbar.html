@@ -4,8 +4,9 @@
     <!-- Brand -->
     <a class="navbar-brand d-flex flex-column" href="#">
       <span class="fw-bold" data-i18n="app.title">Kagapa Tools</span>
-      <small class="text-muted" data-i18n="app.subtitle">A unified platform for internal & developer utility
-        tools</small>
+      <small class="text-muted" data-i18n="app.subtitle">
+        A unified platform for internal &amp; developer utility tools
+      </small>
     </a>
 
     <!-- Mobile Toggle -->
@@ -14,7 +15,7 @@
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <!-- Navbar Links + Language -->
+    <!-- Navbar Links + Language + Auth -->
     <div class="collapse navbar-collapse" id="navbarContent">
       <!-- Left Links -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
@@ -26,8 +27,17 @@
         </li>
       </ul>
 
-      <!-- Right Language Switch -->
-      <div class="d-flex gap-2">
+      <!-- Right Auth + Language -->
+      <div class="d-flex align-items-center gap-2">
+        <!-- Login / Logout -->
+        <!-- When logged OUT -->
+        <a href="/login" class="btn btn-outline-light btn-sm" data-i18n="nav.login">Login</a>
+
+        <!-- When logged IN (toggle server-side / via JS) -->
+        <!-- <button type="button" class="btn btn-outline-light btn-sm"
+                id="logoutBtn" data-i18n="nav.logout">Logout</button> -->
+
+        <!-- Language Switch -->
         <button type="button" class="btn btn-outline-light btn-sm" data-lang-btn="en"
           aria-label="Switch to English">EN</button>
         <button type="button" class="btn btn-light btn-sm active" data-lang-btn="kn"
