@@ -6,3 +6,5 @@ alembic
 pandas
 python-docx
 pytz
+pydantic
+pydantic[email]

@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Server Inventory</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/dt/dt-2.3.5/datatables.min.css" />
+
+    <style>
+        .required-asterisk::after {
+            content: " *";
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        /* Fixed top search bar */
+        .fixed-search-container {
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+            background: white;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid #dee2e6;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Wider table */
+        #assetsTable {
+            min-width: 1600px;
+        }
+
+        #assetsTable_wrapper {
+            width: 95vw;
+            max-width: 95vw;
+        }
+
+        /* Hide default DataTables search */
+        .dataTables_filter {
+            display: none !important;
+        }
+
+        /* Clean buttons */
+        .btn-action {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+        }
+
+        /* Status badge */
+        .status-badge {
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            color: white;
+            border-radius: 20px;
+            padding: 0.4rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Table header */
+        #assetsTable thead th {
+            background: #f8f9fa;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .inventory-card {
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: none;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <div class="container-fluid px-4 py-4">
+        <!-- Fixed Top Toolbar -->
+        <div class="fixed-search-container">
+            <div class="row align-items-center g-3">
+                <div class="col-auto">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="status-badge" id="assetCount">0 assets</span>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search text-muted"></i></span>
+                        <input type="search" id="globalSearch" class="form-control"
+                            placeholder="Search assets by name, IP, owner..." />
+                        <button class="btn btn-primary btn-action" type="button" id="searchBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Search
+                        </button>
+                        <button class="btn btn-outline-secondary btn-action" type="button" id="clearSearch">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="d-flex justify-content-end gap-2 flex-wrap">
+                        <button id="manageCategoriesBtn" class="btn btn-outline-secondary btn-action"
+                            data-bs-toggle="modal" data-bs-target="#categoryModal">
+                            <i class="bi bi-list-ul"></i> Categories
+                        </button>
+                        <button id="clearAll" class="btn btn-outline-danger btn-action">
+                            <i class="bi bi-trash3"></i> Clear All
+                        </button>
+                        <button class="btn btn-primary btn-action" data-bs-toggle="modal" data-bs-target="#assetModal">
+                            <i class="bi bi-plus-circle"></i> Add Asset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h1 class="h3 mb-4 fw-bold text-dark">Server Inventory</h1>
+
+        <!-- Main Table -->
+        <div class="card inventory-card">
+            <div class="card-body p-0">
+                <div class="table-responsive" style="height: 70vh; overflow: auto;">
+                    <table id="assetsTable" class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;">ID</th>
+                                <th style="width: 150px;">Asset Name</th>
+                                <th style="width: 120px;">Category</th>
+                                <th style="width: 120px;">Environment</th>
+                                <th style="width: 140px;">Serial No.</th>
+                                <th style="width: 130px;">IP Address</th>
+                                <th style="width: 130px;">Owner</th>
+                                <th style="width: 120px;">Location</th>
+                                <th style="width: 130px;">Purchase Date</th>
+                                <th style="width: 140px;">Warranty Expiry</th>
+                                <th style="width: 250px;">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Asset Modal -->
+    <div class="modal fade" id="assetModal" tabindex="-1" aria-labelledby="assetModalLabel">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <form id="assetForm" class="needs-validation" novalidate>
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-plus-circle text-primary me-2"></i>Add New Asset
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="assetName">Asset Name</label>
+                                <input type="text" id="assetName" class="form-control"
+                                    placeholder="e.g., web-01-prod" />
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label required-asterisk fw-semibold" for="assetCategory">
+                                    Category <small class="text-danger">(required)</small>
+                                </label>
+                                <div class="input-group">
+                                    <select id="assetCategory" class="form-select" required></select>
+                                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal"
+                                        data-bs-target="#categoryModal">
+                                        <i class="bi bi-gear"></i>
+                                    </button>
+                                    <div class="invalid-feedback">Please select a category.</div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label required-asterisk fw-semibold" for="environment">
+                                    Environment <small class="text-danger">(required)</small>
+                                </label>
+                                <select id="environment" class="form-select" required>
+                                    <option value="" disabled selected>Choose environment...</option>
+                                    <option>Production</option>
+                                    <option>Staging</option>
+                                    <option>QA</option>
+                                    <option>Development</option>
+                                </select>
+                                <div class="invalid-feedback">Environment is required.</div>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="serialNumber">Serial Number</label>
+                                <input type="text" id="serialNumber" class="form-control"
+                                    placeholder="e.g., SN-123456789" />
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="ipAddress">IP Address</label>
+                                <input type="text" id="ipAddress" class="form-control" placeholder="e.g., 10.0.1.25" />
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="owner">Owner/Team</label>
+                                <input type="text" id="owner" class="form-control"
+                                    placeholder="e.g., Platform Engineering" />
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="location">Location</label>
+                                <input type="text" id="location" class="form-control"
+                                    placeholder="e.g., DC1-Rack-U15" />
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="purchaseDate">Purchase Date</label>
+                                <input type="date" id="purchaseDate" class="form-control" />
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label fw-semibold" for="warrantyExpiry">Warranty Expiry</label>
+                                <input type="date" id="warrantyExpiry" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold" for="notes">Notes</label>
+                                <textarea id="notes" class="form-control" rows="4"
+                                    placeholder="Maintenance notes, specs, issues..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-action">
+                            <i class="bi bi-check-circle"></i> Add Asset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Categories Modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form id="categoryForm" class="needs-validation" novalidate>
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-collection text-info me-2"></i>Manage Categories
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-4 p-3 bg-light rounded">
+                            <label class="form-label fw-semibold mb-2" for="newCategoryName">Add New Category</label>
+                            <div class="input-group">
+                                <input type="text" id="newCategoryName" class="form-control"
+                                    placeholder="e.g., Application Server" required />
+                                <button class="btn btn-primary btn-action" type="submit">
+                                    <i class="bi bi-plus-circle"></i> Add
+                                </button>
+                                <div class="invalid-feedback">Category name required</div>
+                            </div>
+                            <div id="categoryMsg" class="form-text text-danger mt-1 d-none"></div>
+                        </div>
+                        <h6 class="fw-bold mb-3">
+                            Current Categories <span class="badge bg-info" id="catCount">0</span>
+                        </h6>
+                        <ul id="categoriesList" class="list-group list-group-flush"></ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Done</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/v/dt/dt-2.3.5/datatables.min.js"></script>
+
+    <script>
+        // Storage & defaults
+        const STORAGE_ASSETS = 'server_inventory_assets_v1';
+        const STORAGE_CATEGORIES = 'server_inventory_categories_v1';
+        const DEFAULT_CATEGORIES = ['Server', 'Network', 'Storage', 'Database', 'Other'];
+
+        function loadJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (e) {
+                console.warn('Parse failed:', key, e);
+                return fallback;
+            }
+        }
+        function saveJson(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function loadAssets() { return loadJson(STORAGE_ASSETS, []); }
+        function saveAssets(rows) { saveJson(STORAGE_ASSETS, rows); }
+        function loadCategories() {
+            const cats = loadJson(STORAGE_CATEGORIES, null);
+            if (Array.isArray(cats)) return cats;
+            saveJson(STORAGE_CATEGORIES, DEFAULT_CATEGORIES);
+            return DEFAULT_CATEGORIES;
+        }
+        function saveCategories(cats) { saveJson(STORAGE_CATEGORIES, cats); }
+
+        function updateAssetCount() {
+            const count = loadAssets().length;
+            document.getElementById('assetCount').textContent = count + ' asset' + (count !== 1 ? 's' : '');
+        }
+
+        function refreshCategorySelect() {
+            const select = document.getElementById('assetCategory');
+            const prev = select.value;
+            const cats = loadCategories();
+            select.innerHTML = '<option value="" disabled selected>Choose category...</option>' +
+                cats.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (cats.includes(prev)) select.value = prev;
+        }
+
+        function usageCountByCategory() {
+            const assets = loadAssets();
+            const counts = {};
+            assets.forEach(row => {
+                const cat = row[2] || '';
+                counts[cat] = (counts[cat] || 0) + 1;
+            });
+            return counts;
+        }
+
+        function renderCategoriesUI() {
+            refreshCategorySelect();
+            const list = document.getElementById('categoriesList');
+            const catCountEl = document.getElementById('catCount');
+            const cats = loadCategories();
+            const counts = usageCountByCategory();
+
+            catCountEl.textContent = cats.length;
+            list.innerHTML = '';
+
+            if (cats.length === 0) {
+                list.innerHTML = '<li class="list-group-item text-muted py-3 text-center">No categories yet.</li>';
+                return;
+            }
+
+            cats.forEach((cat, idx) => {
+                const count = counts[cat] || 0;
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center py-2';
+                li.innerHTML = `
+          <div>
+            <strong>${cat}</strong>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge ${count > 0 ? 'bg-warning' : 'bg-secondary'}">${count} assets</span>
+            <button class="btn btn-sm ${count > 0 ? 'btn-outline-secondary disabled' : 'btn-outline-danger'}" 
+                    data-idx="${idx}">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>`;
+                list.appendChild(li);
+            });
+
+            // Delete handlers
+            list.querySelectorAll('button[data-idx]').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = parseInt(btn.dataset.idx);
+                    const catsNow = loadCategories();
+                    const name = catsNow[idx];
+                    if (!name || (usageCountByCategory()[name] || 0) > 0) return;
+
+                    if (confirm(`Delete category "${name}"?`)) {
+                        catsNow.splice(idx, 1);
+                        saveCategories(catsNow);
+                        renderCategoriesUI();
+                    }
+                };
+            });
+        }
+
+        // Form validation
+        $(function () {
+            $('[class*="needs-validation"]').on('submit', function (e) {
+                if (!this.checkValidity()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                $(this).addClass('was-validated');
+            });
+        });
+
+        // Main initialization
+        $(function () {
+            // Seed categories
+            if (!localStorage.getItem(STORAGE_CATEGORIES)) {
+                saveCategories(DEFAULT_CATEGORIES);
+            }
+            refreshCategorySelect();
+            updateAssetCount();
+
+            let nextId = 1;
+            const table = $('#assetsTable').DataTable({
+                paging: true,
+                searching: true,
+                info: true,
+                ordering: true,
+                scrollY: '65vh',
+                scrollCollapse: true,
+                pageLength: 25,
+                order: [[0, 'asc']],
+                columnDefs: [
+                    { targets: 0, width: '70px', className: 'text-center fw-bold' },
+                    { targets: [2, 3], className: 'text-center' },
+                    { targets: 10, width: '250px', orderable: false }
+                ],
+                dom: 'rtip'
+            });
+
+            // Load saved assets
+            const saved = loadAssets();
+            if (saved.length > 0) {
+                table.rows.add(saved).draw(false);
+                nextId = Math.max(...saved.map(r => parseInt(r[0]) || 0), 0) + 1;
+            }
+            updateAssetCount();
+
+            // Search controls (button only)
+            $('#searchBtn').click(() => {
+                table.search($('#globalSearch').val()).draw();
+            });
+
+            $('#clearSearch').click(() => {
+                $('#globalSearch').val('').focus();
+                table.search('').draw();
+                updateAssetCount();
+            });
+
+            // Add Asset
+            $('#assetForm').on('submit', function (e) {
+                if (!this.checkValidity()) return;
+                e.preventDefault();
+
+                const newRow = [
+                    nextId++,
+                    $('#assetName').val() || '',
+                    $('#assetCategory').val() || '',
+                    $('#environment').val() || '',
+                    $('#serialNumber').val() || '',
+                    $('#ipAddress').val() || '',
+                    $('#owner').val() || '',
+                    $('#location').val() || '',
+                    $('#purchaseDate').val() || '',
+                    $('#warrantyExpiry').val() || '',
+                    $('#notes').val() || ''
+                ];
+
+                table.row.add(newRow).draw(false);
+                const rows = loadAssets();
+                rows.push(newRow);
+                saveAssets(rows);
+                updateAssetCount();
+
+                this.reset();
+                $(this).removeClass('was-validated');
+                refreshCategorySelect();
+                bootstrap.Modal.getInstance(document.getElementById('assetModal')).hide();
+            });
+
+            // Clear All
+            $('#clearAll').click(function () {
+                if (confirm('Clear ALL assets? This cannot be undone.')) {
+                    localStorage.removeItem(STORAGE_ASSETS);
+                    table.clear().draw(false);
+                    nextId = 1;
+                    updateAssetCount();
+                }
+            });
+
+            // Category modal events
+            $('#categoryModal').on('shown.bs.modal', function () {
+                $('#newCategoryName').focus();
+                renderCategoriesUI();
+                $('#categoryMsg').addClass('d-none');
+            });
+
+            $('#categoryForm').on('submit', function (e) {
+                e.preventDefault();
+                const input = document.getElementById('newCategoryName');
+                const msg = document.getElementById('categoryMsg');
+                const raw = input.value.trim();
+
+                if (!raw) {
+                    $(this).addClass('was-validated');
+                    return;
+                }
+
+                const cats = loadCategories();
+                if (cats.some(c => c.toLowerCase() === raw.toLowerCase())) {
+                    msg.textContent = 'Category already exists (case-insensitive).';
+                    $(msg).removeClass('d-none');
+                    return;
+                }
+
+                cats.push(raw);
+                saveCategories(cats);
+                input.value = '';
+                $(this).removeClass('was-validated');
+                renderCategoriesUI();
+            });
+
+            $('#categoryModal').on('hidden.bs.modal', refreshCategorySelect);
+        });
+    </script>
+</body>
+
+</html>

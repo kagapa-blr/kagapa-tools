@@ -1,148 +1,116 @@
-# routes/manage_users.py
-
 from flask import Blueprint, request, jsonify
+from pydantic import ValidationError
 
 from app.models.user_management import UserRole
+from app.schemas.user_management import (
+    UserCreateSchema,
+    UserUpdateSchema,
+    UserResponseSchema,
+)
 from app.services.user_management.create_users import (
     UserCreationService,
     UserReadService,
     UserUpdateService,
     UserDeleteService,
-    UserAuthService
+    UserAuthService,
 )
 
 manage_users_bp = Blueprint("manage_users", __name__)
 
 
-# ---------------- CREATE / SIGNUP ----------------
 @manage_users_bp.route("/signup", methods=["POST"])
 def signup():
-    data = request.json
-    username = data.get("username")
-    password = data.get("password")
-    email = data.get("email")
-    phone = data.get("phone")
+    try:
+        schema = UserCreateSchema(**request.get_json())
+    except ValidationError as e:
+        return jsonify({"errors": e.errors()}), 400
 
-    user, error = UserCreationService.create_user(
-        username=username,
-        password=password,
-        email=email,
-        phone=phone
-    )
-
+    user, error = UserCreationService.create_user(schema)
     if error:
-        return jsonify({"success": False, "message": error}), 400
+        return jsonify({"message": error}), 400
 
-    return jsonify({
-        "success": True,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role.value
-        }
-    }), 201
+    return jsonify(
+        UserResponseSchema.model_validate(user).model_dump()
+    ), 201
 
 
-# ---------------- GET USER ----------------
 @manage_users_bp.route("/<int:user_id>", methods=["GET"])
 def get_user(user_id):
     user = UserReadService.get_user_by_id(user_id)
     if not user:
-        return jsonify({"success": False, "message": "User not found."}), 404
+        return jsonify({"message": "User not found"}), 404
 
-    return jsonify({
-        "success": True,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role.value,
-            "is_active": user.is_active
-        }
-    })
+    return jsonify(
+        UserResponseSchema.model_validate(user).model_dump()
+    )
 
 
-# ---------------- LIST USERS ----------------
 @manage_users_bp.route("/", methods=["GET"])
 def list_users():
-    role = request.args.get("role")  # optional filter: user/admin
+    role_param = request.args.get("role")
     is_active = request.args.get("is_active", "true").lower() == "true"
 
-    if role:
-
-        role = UserRole(role)
+    role = None
+    if role_param:
+        try:
+            role = UserRole(role_param)
+        except ValueError:
+            return jsonify({"message": "Invalid role"}), 400
 
     users = UserReadService.list_users(role=role, is_active=is_active)
-    users_list = [{
-        "id": u.id,
-        "username": u.username,
-        "email": u.email,
-        "phone": u.phone,
-        "role": u.role.value,
-        "is_active": u.is_active
-    } for u in users]
 
-    return jsonify({"success": True, "users": users_list})
+    return jsonify([
+        UserResponseSchema.model_validate(u).model_dump()
+        for u in users
+    ])
 
 
-# ---------------- UPDATE USER ----------------
 @manage_users_bp.route("/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
-    data = request.json
-    user, error = UserUpdateService.update_user(user_id, **data)
+    try:
+        schema = UserUpdateSchema(**request.get_json())
+    except ValidationError as e:
+        return jsonify({"errors": e.errors()}), 400
 
+    user, error = UserUpdateService.update_user(user_id, schema)
     if error:
-        return jsonify({"success": False, "message": error}), 400
+        return jsonify({"message": error}), 400
 
-    return jsonify({
-        "success": True,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role.value,
-            "is_active": user.is_active
-        }
-    })
+    return jsonify(
+        UserResponseSchema.model_validate(user).model_dump()
+    )
 
 
-# ---------------- DEACTIVATE / ACTIVATE USER ----------------
 @manage_users_bp.route("/<int:user_id>/deactivate", methods=["PATCH"])
 def deactivate_user(user_id):
     user, error = UserDeleteService.deactivate_user(user_id)
     if error:
-        return jsonify({"success": False, "message": error}), 400
-    return jsonify({"success": True, "message": f"User {user.username} deactivated."})
+        return jsonify({"message": error}), 400
+    return jsonify({"message": f"{user.username} deactivated"})
 
 
 @manage_users_bp.route("/<int:user_id>/activate", methods=["PATCH"])
 def activate_user(user_id):
     user, error = UserDeleteService.activate_user(user_id)
     if error:
-        return jsonify({"success": False, "message": error}), 400
-    return jsonify({"success": True, "message": f"User {user.username} activated."})
+        return jsonify({"message": error}), 400
+    return jsonify({"message": f"{user.username} activated"})
 
 
-# ---------------- LOGIN / VERIFY PASSWORD ----------------
 @manage_users_bp.route("/login", methods=["POST"])
 def login():
-    data = request.json
-    username = data.get("username")
-    password = data.get("password")
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "Invalid request"}), 400
 
-    user = UserReadService.get_user_by_username(username)
-    if not user or not UserAuthService.verify_password(user, password):
-        return jsonify({"success": False, "message": "Invalid credentials."}), 401
+    user = UserReadService.get_user_by_username(data.get("username"))
+    if not user or not UserAuthService.verify_password(
+            user, data.get("password")
+    ):
+        return jsonify({"message": "Invalid credentials"}), 401
 
     return jsonify({
-        "success": True,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "role": user.role.value
-        }
+        "id": user.id,
+        "username": user.username,
+        "role": user.role.value,
     })
