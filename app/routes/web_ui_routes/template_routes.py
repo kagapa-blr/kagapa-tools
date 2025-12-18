@@ -18,6 +18,7 @@ def home_page():
 
 # ==================================================spellcheck admin dictionary routes=========================
 @template_routes_bp.route("/spellcheck/main/dictionary", methods=["GET"])
+@login_required
 def spellcheck_admin_dictionary():
     return render_template("dictionary/main_dictionary.html")
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, make_response
+from flask import Blueprint, render_template, request, jsonify, make_response, url_for, redirect
 import jwt
 
 from app.security.jwt_utils import generate_jwt, decode_jwt
@@ -94,10 +94,10 @@ def login_api():
 @user_login_bp.route("/logout", methods=["POST"])
 def logout():
     response = make_response(
-        jsonify(success=True, message="Logged out successfully")
+        redirect(url_for("user_login.login_page"))
     )
     response.delete_cookie("access_token")
-    return response, 200
+    return response
 
 
 @user_login_bp.route("/me", methods=["GET"])
@@ -115,7 +115,6 @@ def me():
         return jsonify(
             success=True,
             user={
-                "id": payload.get("id"),
                 "username": payload.get("username"),
                 "role": payload.get("role"),
                 "is_active": payload.get("is_active"),

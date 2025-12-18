@@ -1,6 +1,8 @@
 from functools import wraps
-from flask import request, g, jsonify, redirect, url_for
+
 import jwt
+from flask import g
+from flask import request, redirect, url_for, jsonify
 
 from app.security.jwt_utils import decode_jwt
 
@@ -55,21 +57,27 @@ def _decode_and_attach(token):
 
 # ------------------ DECORATORS ------------------
 
-def login_required(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        token = _get_token()
-        if not token:
-            return _unauthorized("Authorization token missing.")
-        try:
-            _decode_and_attach(token)
-        except jwt.ExpiredSignatureError:
-            return _unauthorized("Token expired.")
-        except jwt.InvalidTokenError:
-            return _unauthorized("Invalid token.")
-        return fn(*args, **kwargs)
 
-    return wrapper
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.cookies.get("access_token")
+        if not token:
+            # For API routes, return JSON
+            if request.path.startswith("/api/"):
+                return jsonify(success=False, message="Unauthorized"), 401
+            # For page routes, redirect to log in
+            return redirect(url_for("user_login.login_page", next=request.path))
+
+        try:
+            user = decode_jwt(token)
+            request.user = user
+        except Exception:
+            return redirect(url_for("user_login.login_page", next=request.path))
+
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 def admin_required(fn):
