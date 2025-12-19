@@ -1,7 +1,7 @@
 // static/js/user_dictionary.js
 
-import apiClient from "./apiClient.js";
-import API_ENDPOINTS, { BASE_URL } from "./apiEndpoints.js"; // adjust path as needed
+import apiClient from "../apiClient.js";
+import API_ENDPOINTS, { BASE_URL } from "../apiEndpoints.js"; // adjust path as needed
 
 const state = {
     addWords: [],
@@ -117,31 +117,28 @@ function log(responseData, type = "info") {
 // -----------------------------
 // Updated addSubmitBtn handler
 // -----------------------------
-els.addSubmitBtn.addEventListener("click", async () => {
-    if (!state.addWords.length) {
-        log("No words queued to add.", "warn");
-        return;
-    }
-    toggleBusy(true);
-    try {
-        const data = await apiClient.post(
-            API_ENDPOINTS.USER_DICTIONARY.ADD,
-            { words: state.addWords }
-        );
+// els.addSubmitBtn.addEventListener("click", async () => {
+//     if (!state.addWords.length) {
+//         log("No words queued to add.", "warn");
+//         return;
+//     }
+//     toggleBusy(true);
+//     try {
+//         const data = await apiClient.post(API_ENDPOINTS.USER_DICTIONARY.ADD, { words: state.addWords });
 
-        // ✅ Pass RAW response to log() - auto-detects success/info
-        log(data, "ok");  // "ok" ensures green badge
+//         // ✅ Pass RAW response to log() - auto-detects success/info
+//         log(data, "ok");  // "ok" ensures green badge
 
-        state.addWords = [];
-        renderChips(els.addWordsChips, state.addWords, () => { });
-        reloadTable();
-    } catch (err) {
-        // Pass error response or message
-        log(err.response?.data || err.message || err, "err");
-    } finally {
-        toggleBusy(false);
-    }
-});
+//         state.addWords = [];
+//         renderChips(els.addWordsChips, state.addWords, () => { });
+//         reloadTable();
+//     } catch (err) {
+//         // Pass error response or message
+//         log(err.response?.data || err.message || err, "err");
+//     } finally {
+//         toggleBusy(false);
+//     }
+// });
 
 
 

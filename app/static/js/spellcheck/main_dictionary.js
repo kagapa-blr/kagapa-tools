@@ -1,6 +1,6 @@
 // static/js/main_dictionary.js - ✅ ALL ISSUES FIXED
-import apiClient from "./apiClient.js";
-import API_ENDPOINTS from "./apiEndpoints.js";
+import apiClient from "../apiClient.js";
+import API_ENDPOINTS from "../apiEndpoints.js";
 
 const state = {
     addWords: [],

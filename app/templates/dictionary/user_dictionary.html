@@ -18,7 +18,7 @@
   <script type="module" src="{{ url_for('static', filename='js/navbar-auth.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='cdn/dataTables/dataTables.min.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/user_dictionary.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/spellcheck/user_dictionary.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/language-switch.js') }}"></script>
 
 </head>
@@ -95,7 +95,7 @@
           <div class="card-body">
             <div class="input-group mb-2">
               <input type="text" id="addWordsInput" class="form-control form-control-sm"
-                placeholder="Type word(s), press Enter or click Add">
+                placeholder="Type word(s), press Enter or click Add" required>
               <button id="addWordBtn" class="btn btn-primary btn-sm" data-i18n="common.open_tool">Add</button>
             </div>
             <small class="text-muted d-block mb-2">Multiple words: comma or space separated.</small>
