@@ -10,73 +10,82 @@
       </small>
     </a>
 
-    <!-- Mobile Toggle -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+    <!-- Right Section ONLY -->
+    <div class="d-flex align-items-center gap-2 ms-auto" id="authArea">
 
-    <div class="collapse navbar-collapse" id="navbarContent">
+      <!-- Logged OUT -->
+      <a href="{{ url_for('user_login.login_page') }}" class="btn btn-outline-light btn-sm" id="loginBtn">
+        Login
+      </a>
 
-      <!-- Left Links -->
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item">
-          <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/" data-i18n="nav.home">
-            Home
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if request.path.startswith('/admin') %}active{% endif %}" href="/admin"
-            data-i18n="nav.admin">
-            Admin
-          </a>
-        </li>
-      </ul>
+      <!-- Logged IN -->
+      <div class="dropdown d-none" id="userDropdown">
+        <button class="btn btn-outline-light btn-sm dropdown-toggle
+               d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+          <span class="avatar-circle" id="userAvatar">U</span>
+          <span class="d-none d-md-inline" id="usernameLabel"></span>
+        </button>
 
-      <!-- Right Section -->
-      <div class="d-flex align-items-center gap-2" id="authArea">
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button class="dropdown-item" onclick="openProfileModal()">
+              👤 Profile
+            </button>
+          </li>
 
-        <!-- Logged OUT -->
-        <a href="{{ url_for('user_login.login_page') }}" class="btn btn-outline-light btn-sm" id="loginBtn">
-          Login
-        </a>
+          <li>
+            <hr class="dropdown-divider">
+          </li>
 
-        <!-- Logged IN -->
-        <div class="dropdown d-none" id="userDropdown">
-          <button class="btn btn-outline-light btn-sm dropdown-toggle
-                 d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-            <span class="avatar-circle" id="userAvatar">U</span>
-            <span class="d-none d-md-inline" id="usernameLabel"></span>
-          </button>
-
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <a class="dropdown-item" href="{{ url_for('user_login.me') }}">
-                👤 Profile
-              </a>
-            </li>
-
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-
-            <!-- Logout -->
-            <li>
-              <form action="{{ url_for('user_login.logout') }}" method="post" class="d-inline">
-                <button type="submit" class="dropdown-item text-danger">
-                  🚪 Logout
-                </button>
-              </form>
-            </li>
-          </ul>
-        </div>
-
-
-        <!-- Language Switch -->
-        <button class="btn btn-outline-light btn-sm" data-lang-btn="en">EN</button>
-        <button class="btn btn-light btn-sm active" data-lang-btn="kn">ಕನ್ನಡ</button>
-
+          <li>
+            <form action="{{ url_for('user_login.logout') }}" method="post">
+              <button type="submit" class="dropdown-item text-danger">
+                🚪 Logout
+              </button>
+            </form>
+          </li>
+        </ul>
       </div>
+
+      <!-- Language Switch -->
+      <button class="btn btn-outline-light btn-sm" data-lang-btn="en">EN</button>
+      <button class="btn btn-light btn-sm active" data-lang-btn="kn">ಕನ್ನಡ</button>
+
     </div>
   </div>
 </nav>
-</script>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 shadow">
+
+      <div class="modal-header">
+        <h5 class="modal-title">👤 User Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="fw-bold">Username</label>
+          <div id="profileUsername"></div>
+        </div>
+
+        <div class="mb-3">
+          <label class="fw-bold">Role</label>
+          <div id="profileRole"></div>
+        </div>
+
+        <div class="mb-3">
+          <label class="fw-bold">Status</label>
+          <span id="profileStatus" class="badge"></span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
