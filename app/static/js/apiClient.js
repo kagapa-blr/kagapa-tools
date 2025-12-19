@@ -1,8 +1,3 @@
-const defaultHeaders = {
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-};
-
 const apiClient = {
     request: async ({
         method,
@@ -19,23 +14,29 @@ const apiClient = {
             }
         });
 
+        const isFormData = body instanceof FormData;
+
+        const finalHeaders = {
+            ...(isFormData ? {} : {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }),
+            ...headers
+        };
+
         const options = {
             method: method.toUpperCase(),
-            headers: { ...defaultHeaders, ...headers },
-
-            // 🔐 CRITICAL: send HttpOnly cookies
-            credentials: "same-origin"
+            credentials: "same-origin",
+            headers: finalHeaders
         };
 
         if (body && options.method !== "GET") {
-            options.body = body instanceof FormData
-                ? body
-                : JSON.stringify(body);
+            options.body = isFormData ? body : JSON.stringify(body);
         }
 
         const response = await fetch(url.toString(), options);
 
-        let data = null;
+        let data;
         const contentType = response.headers.get("content-type") || "";
 
         if (contentType.includes("application/json")) {
@@ -44,10 +45,9 @@ const apiClient = {
             data = await response.text().catch(() => null);
         }
 
-        // 🔒 NO token clearing here — server controls cookies
         if (!response.ok) {
             const error = new Error(
-                data?.message || `HTTP ${response.status}`
+                data?.error || data?.message || `HTTP ${response.status}`
             );
             error.status = response.status;
             error.data = data;
@@ -61,15 +61,15 @@ const apiClient = {
         return this.request({ method: "GET", endpoint, params, headers });
     },
 
-    post(endpoint, body = {}, headers = {}) {
+    post(endpoint, body = null, headers = {}) {
         return this.request({ method: "POST", endpoint, body, headers });
     },
 
-    put(endpoint, body = {}, headers = {}) {
+    put(endpoint, body = null, headers = {}) {
         return this.request({ method: "PUT", endpoint, body, headers });
     },
 
-    patch(endpoint, body = {}, headers = {}) {
+    patch(endpoint, body = null, headers = {}) {
         return this.request({ method: "PATCH", endpoint, body, headers });
     },
 

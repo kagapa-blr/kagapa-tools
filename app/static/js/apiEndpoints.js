@@ -34,7 +34,7 @@ const API_ENDPOINTS = {
     // ----------------------------------
     SORT_DOC: {
         SORT_DOC: `${BASE_URL}/sort-doc`,
-        UPLOAD_FILE: `${BASE_URL}/sort-doc/api/upload`,
+        UPLOAD_FILE: `${BASE_URL}/api/v1/sort-doc/upload`,
     },
 
     // ----------------------------------

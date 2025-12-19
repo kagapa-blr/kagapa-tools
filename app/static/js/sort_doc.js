@@ -131,13 +131,18 @@ function displayResults(data) {
       <div><b>ಅದೇ ರೀತಿಯ ಪದಗಳು:</b> ${data.unique_word_count}</div>
       <div><b>ಅತ್ಯಂತ ಚಿಕ್ಕ ಪದದ ಗಾತ್ರ:</b> ${data.min_word_length}</div>
       <div><b>ಅತ್ಯಂತ ದೊಡ್ಡ ಪದದ ಗಾತ್ರ:</b> ${data.max_word_length}</div>
-      <div class="mt-3">
-        <a class="btn btn-outline-kn w-100 mb-2" href="${data.download_lowest_url}" target="_blank" rel="noopener noreferrer">📥 ಚಿಕ್ಕ ಪದಗಳ CSV</a>
-        <a class="btn btn-outline-kn w-100" href="${data.download_highest_url}" target="_blank" rel="noopener noreferrer">📥 ದೊಡ್ಡ ಪದಗಳ CSV</a>
+      <div class="mt-3 d-grid gap-2">
+        <a class="btn btn-outline-kn w-100" href="${data.download_lowest_url}" target="_blank" rel="noopener noreferrer">
+          📥 ಚಿಕ್ಕ ಪದಗಳ CSV
+        </a>
+        <a class="btn btn-outline-kn w-100" href="${data.download_highest_url}" target="_blank" rel="noopener noreferrer">
+          📥 ದೊಡ್ಡ ಪದಗಳ CSV
+        </a>
       </div>`;
     results.style.opacity = 1;
   }, 400);
 }
+
 
 // -----------------------------
 // Upload & Process File
@@ -149,32 +154,38 @@ async function uploadFile() {
   }
 
   startBtn.disabled = true;
-  startBtn.setAttribute("aria-disabled", true);
   showProgress();
   showLoading();
 
   const formData = new FormData();
-  formData.append("file", selectedFile);
+  formData.append("file", selectedFile); // 👈 KEY
 
   try {
     simulateProgress();
 
-    // Use centralized API_ENDPOINTS
-    const data = await apiClient.post(`${API_ENDPOINTS.SORT_DOC.UPLOAD_FILE}`, formData);
+    const data = await apiClient.post(
+      API_ENDPOINTS.SORT_DOC.UPLOAD_FILE,
+      formData
+    );
 
     clearInterval(progressTimer);
     updateProgress(100);
-
     displayResults(data);
+
   } catch (error) {
     console.error("Upload error:", error);
-    showMessage(error.data?.message || "ಅಪ್‌ಲೋಡ್ ದೋಷ! ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", true);
+    showMessage(
+      error.data?.error || "ಅಪ್‌ಲೋಡ್ ದೋಷ! ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+      true
+    );
   } finally {
     startBtn.disabled = false;
-    startBtn.setAttribute("aria-disabled", false);
     setTimeout(resetProgress, 500);
   }
 }
+
+
+
 
 // -----------------------------
 // Initialize

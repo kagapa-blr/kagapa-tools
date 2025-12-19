@@ -6,6 +6,7 @@ from flask import Flask
 from app.config.database import init_db
 from app.routes.manage_users.manage_users import manage_users_bp
 from app.routes.manage_users.user_login import user_login_bp
+from app.routes.sortwords.sort_doc_routes import sort_doc_bp
 from app.routes.spellcheck.main_dictionary_routes import main_dictionary_bp
 from app.routes.spellcheck.user_dictionary_routes import user_dictionary_bp
 from app.routes.web_ui_routes.template_routes import template_routes_bp
@@ -66,6 +67,7 @@ app.register_blueprint(user_login_bp, url_prefix="/api/auth")
 app.register_blueprint(main_dictionary_bp, url_prefix="/api/v1/dictionary/main")
 app.register_blueprint(user_dictionary_bp, url_prefix="/api/v1/dictionary/user")
 app.register_blueprint(manage_users_bp, url_prefix="/api/v1/users")
+app.register_blueprint(sort_doc_bp, url_prefix="/api/v1/sort-doc")
 logger.info("All blueprints registered successfully")
 
 # --------------------------------------------------
