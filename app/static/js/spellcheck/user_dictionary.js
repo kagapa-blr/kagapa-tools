@@ -32,7 +32,6 @@ const els = {
     uploadBtn: document.getElementById("uploadBtn"),
     uploadResultCounts: document.getElementById("uploadResultCounts"),
 
-    logArea: document.getElementById("logArea"),
     refreshTableBtn: document.getElementById("refreshTableBtn"),
     approveSelectedBtn: document.getElementById("approveSelectedBtn"),
     deleteSelectedBtn: document.getElementById("deleteSelectedBtn"),
@@ -89,78 +88,87 @@ function toggleBusy(disabled) {
     });
 }
 
-function log(responseData, type = "info") {
-    const line = document.createElement("div");
-    line.className = "mb-2 p-2 bg-light rounded-3 border-start border-3";
+// -----------------------------
+// Modals (status + confirm)
+// -----------------------------
+let statusModalInstance = null;
+let confirmModalInstance = null;
 
-    let msg = "";
-    let badgeClass = "bg-secondary";
+function setupModals() {
+    const statusModalEl = document.getElementById("statusModal");
+    const confirmModalEl = document.getElementById("confirmModal");
+
+    if (statusModalEl) {
+        statusModalInstance = new bootstrap.Modal(statusModalEl);
+    }
+    if (confirmModalEl) {
+        confirmModalInstance = new bootstrap.Modal(confirmModalEl);
+    }
+}
+
+function showStatusModal({ type = "info", title, message, details = [] }) {
+    const iconEl = document.getElementById("statusModalIcon");
+    const titleEl = document.getElementById("statusModalTitle");
+    const msgEl = document.getElementById("statusModalMessage");
+    const detailsEl = document.getElementById("statusModalDetails");
+
     let icon = "ℹ️";
+    let defaultTitle = "Information";
 
-    if (type === "ok" || type === "success") {
-        badgeClass = "bg-success border-success";
+    if (type === "success") {
         icon = "✅";
-        msg = "SUCCESS";
-    } else if (type === "err" || type === "error") {
-        badgeClass = "bg-danger border-danger";
+        defaultTitle = "Success";
+    } else if (type === "error") {
         icon = "❌";
-        msg = "ERROR";
+        defaultTitle = "Error";
     } else if (type === "warn") {
-        badgeClass = "bg-warning border-warning text-dark";
         icon = "⚠️";
-        msg = "WARNING";
-    } else {
-        // Auto-detect from typical add/updated/skipped object
-        const added = Object.keys(responseData.added || {}).length;
-        const updated = Object.keys(responseData.updated || {}).length;
-        const skipped = (responseData.skipped || []).length;
-
-        if (added + updated > 0) {
-            badgeClass = "bg-success border-success";
-            icon = "✅";
-            msg = `SUCCESS: ${added} added, ${updated} updated`;
-
-            const freqDetails = [];
-            Object.entries(responseData.updated || {}).forEach(([word, freq]) => {
-                freqDetails.push(`${word}(${freq})`);
-            });
-            if (freqDetails.length) {
-                msg += ` [${freqDetails
-                    .slice(0, 3)
-                    .join(", ")}${freqDetails.length > 3 ? "..." : ""}]`;
-            }
-        } else if (skipped > 0) {
-            badgeClass = "bg-warning border-warning text-dark";
-            icon = "⚠️";
-            msg = `SKIPPED: ${skipped} words`;
-        } else {
-            badgeClass = "bg-secondary border-secondary";
-            icon = "ℹ️";
-            msg = "INFO";
-        }
+        defaultTitle = "Warning";
     }
 
-    const badge = document.createElement("span");
-    badge.className = `badge ${badgeClass} fs-6 fw-bold me-2 px-2 py-1`;
-    badge.innerHTML = `${icon} ${msg}`;
+    iconEl.textContent = icon;
+    titleEl.textContent = title || defaultTitle;
+    msgEl.textContent = message || "";
 
-    const details = document.createElement("div");
-    details.className = "small text-muted mt-1";
+    detailsEl.innerHTML = "";
+    details.forEach((d) => {
+        const li = document.createElement("li");
+        li.textContent = d;
+        detailsEl.appendChild(li);
+    });
 
-    if (typeof responseData === "object" && responseData !== null) {
-        details.innerHTML = `
-      Added: ${Object.keys(responseData.added || {}).length}<br>
-      Updated: ${Object.keys(responseData.updated || {}).length}<br>
-      Skipped: ${(responseData.skipped || []).length}
-    `;
-    } else {
-        details.textContent = responseData;
-    }
+    statusModalInstance && statusModalInstance.show();
+}
 
-    line.appendChild(badge);
-    line.appendChild(details);
-    els.logArea.prepend(line);
-    els.logArea.scrollTop = 0;
+function showConfirmModal({
+    title,
+    message,
+    okLabel = "Yes, proceed",
+    okClass = "btn-danger btn-sm",
+    onConfirm,
+}) {
+    const titleEl = document.getElementById("confirmModalTitle");
+    const msgEl = document.getElementById("confirmModalMessage");
+    const okBtn = document.getElementById("confirmModalOkBtn");
+
+    titleEl.textContent = title || "Confirm";
+    msgEl.textContent = message || "Are you sure?";
+    okBtn.textContent = okLabel;
+    okBtn.className = "btn " + okClass;
+
+    const handler = () => {
+        okBtn.removeEventListener("click", handler);
+        confirmModalInstance.hide();
+        if (typeof onConfirm === "function") onConfirm();
+    };
+
+    okBtn.replaceWith(okBtn.cloneNode(true));
+    const newOkBtn = document.getElementById("confirmModalOkBtn");
+    newOkBtn.textContent = okLabel;
+    newOkBtn.className = "btn " + okClass;
+    newOkBtn.addEventListener("click", handler);
+
+    confirmModalInstance && confirmModalInstance.show();
 }
 
 // -----------------------------
@@ -199,7 +207,11 @@ function initAddSection() {
 
     els.addSubmitBtn.addEventListener("click", async () => {
         if (!state.addWords.length) {
-            log("No words queued to add.", "warn");
+            showStatusModal({
+                type: "warn",
+                title: "No words",
+                message: "There are no words in the add queue.",
+            });
             return;
         }
 
@@ -214,24 +226,34 @@ function initAddSection() {
             const updated = Object.keys(data.updated || {});
             const skipped = data.skipped || [];
 
-            let logMsg = `Add: ${added.length} added`;
-            if (updated.length) logMsg += `, ${updated.length} updated`;
-            if (skipped.length) logMsg += `, ${skipped.length} skipped`;
+            let msg = `Added: ${added.length} word(s).`;
+            if (updated.length) msg += ` Updated: ${updated.length}.`;
+            if (skipped.length) msg += ` Skipped: ${skipped.length}.`;
 
+            const details = [];
             if (updated.length) {
                 const freqDetails = updated
-                    .map((w) => `${w}(${data.updated[w]})`)
-                    .join(", ");
-                logMsg += ` [${freqDetails}]`;
+                    .map((w) => `${w} (${data.updated[w]})`)
+                    .slice(0, 5);
+                details.push(`Updated frequencies: ${freqDetails.join(", ")}`);
             }
 
-            log(logMsg, "ok");
+            showStatusModal({
+                type: "success",
+                title: "Words added",
+                message: msg,
+                details,
+            });
 
             state.addWords = [];
             renderChips(els.addWordsChips, state.addWords, () => { });
             reloadTable();
         } catch (err) {
-            log(`Add failed: ${err.message || err}`, "err");
+            showStatusModal({
+                type: "error",
+                title: "Add failed",
+                message: err.message || String(err),
+            });
         } finally {
             toggleBusy(false);
         }
@@ -274,7 +296,11 @@ function initDeleteSection() {
 
     els.removeSubmitBtn.addEventListener("click", async () => {
         if (!state.removeWords.length) {
-            log("No words queued to delete.", "warn");
+            showStatusModal({
+                type: "warn",
+                title: "Nothing to delete",
+                message: "No words queued to delete.",
+            });
             return;
         }
 
@@ -287,16 +313,24 @@ function initDeleteSection() {
             const deleted = data.deleted || [];
             const notFound = data.not_found || [];
 
-            log(
-                `Delete: ${deleted.length} deleted, ${notFound.length} not found.`,
-                "ok"
-            );
+            showStatusModal({
+                type: "success",
+                title: "Words removed",
+                message: `Deleted: ${deleted.length}, not found: ${notFound.length}.`,
+                details: notFound.length
+                    ? ["Some words were not found in the user dictionary."]
+                    : [],
+            });
 
             state.removeWords = [];
             renderChips(els.removeWordsChips, state.removeWords, () => { });
             reloadTable();
         } catch (err) {
-            log(`Delete failed: ${err.message || err}`, "err");
+            showStatusModal({
+                type: "error",
+                title: "Delete failed",
+                message: err.message || String(err),
+            });
         } finally {
             toggleBusy(false);
         }
@@ -310,13 +344,21 @@ function initUploadSection() {
     els.uploadBtn.addEventListener("click", async () => {
         const file = els.fileInput.files[0];
         if (!file) {
-            log("Please select a .txt or .docx file.", "warn");
+            showStatusModal({
+                type: "warn",
+                title: "File required",
+                message: "Please select a .txt or .docx file.",
+            });
             return;
         }
 
         const ext = file.name.toLowerCase().split(".").pop();
         if (!["txt", "docx"].includes(ext)) {
-            log("Invalid file type. Only .txt and .docx are allowed.", "err");
+            showStatusModal({
+                type: "error",
+                title: "Invalid file type",
+                message: "Only .txt and .docx files are allowed.",
+            });
             return;
         }
 
@@ -343,13 +385,19 @@ function initUploadSection() {
                 errors = [],
             } = data;
 
-            log(
-                `Processed "${fileName || file.name}": ` +
-                `${total_tokens} tokens, ${unique_words} unique, ` +
-                `${inserted.length} inserted, ${updated.length} updated, ` +
-                `${errors.length} errors.`,
-                "ok"
-            );
+            showStatusModal({
+                type: "success",
+                title: "Upload complete",
+                message: `Processed "${fileName || file.name}".`,
+                details: [
+                    `${total_tokens} tokens`,
+                    `${unique_words} unique words`,
+                    `${inserted.length} inserted`,
+                    `${updated.length} updated`,
+                    `${skipped.length} skipped`,
+                    `${errors.length} errors`,
+                ],
+            });
 
             const container = els.uploadResultCounts;
             container.classList.remove("d-none");
@@ -371,7 +419,11 @@ function initUploadSection() {
 
             reloadTable();
         } catch (err) {
-            log(`Upload failed: ${err.message || err}`, "err");
+            showStatusModal({
+                type: "error",
+                title: "Upload failed",
+                message: err.message || String(err),
+            });
         } finally {
             toggleBusy(false);
         }
@@ -401,12 +453,15 @@ function initTable() {
                     callback({
                         data: json.data || [],
                         recordsTotal: json.recordsTotal || 0,
-                        recordsFiltered:
-                            json.recordsFiltered || json.recordsTotal || 0,
+                        recordsFiltered: json.recordsFiltered || json.recordsTotal || 0,
                     });
                 })
                 .catch((err) => {
-                    log(`Table load error: ${err.message || err}`, "err");
+                    showStatusModal({
+                        type: "error",
+                        title: "Table load failed",
+                        message: err.message || String(err),
+                    });
                     callback({
                         data: [],
                         recordsTotal: 0,
@@ -464,6 +519,7 @@ function initTable() {
                 state.selectedWords.delete(word);
             }
         });
+        syncSelectAllCheckbox();
     });
 
     // Search controls
@@ -519,10 +575,13 @@ function initApproveSelected() {
     els.approveSelectedBtn.addEventListener("click", async () => {
         const words = Array.from(state.selectedWords);
         if (!words.length) {
-            log("No rows selected for approval.", "warn");
+            showStatusModal({
+                type: "warn",
+                title: "No selection",
+                message: "Select at least one row to approve.",
+            });
             return;
         }
-
 
         toggleBusy(true);
         try {
@@ -535,18 +594,20 @@ function initApproveSelected() {
             const notFound = res.not_found || [];
             const failed = res.failed || [];
 
-            log(
-                `Approve selected → moved: ${moved.length}, ` +
-                `already exists: ${already.length}, ` +
-                `not found: ${notFound.length}, ` +
-                `failed: ${failed.length}.`,
-                "ok"
-            );
+            showStatusModal({
+                type: "success",
+                title: "Approval complete",
+                message: `Moved: ${moved.length}, already exists: ${already.length}, not found: ${notFound.length}, failed: ${failed.length}.`,
+            });
 
             moved.forEach((w) => state.selectedWords.delete(w));
             reloadTable(false);
         } catch (err) {
-            log(`Approve failed: ${err.message || err}`, "err");
+            showStatusModal({
+                type: "error",
+                title: "Approve failed",
+                message: err.message || String(err),
+            });
         } finally {
             toggleBusy(false);
         }
@@ -557,40 +618,51 @@ function initApproveSelected() {
 // Delete selected (from table)
 // -----------------------------
 function initDeleteSelected() {
-    els.deleteSelectedBtn.addEventListener("click", async () => {
+    els.deleteSelectedBtn.addEventListener("click", () => {
         const words = Array.from(state.selectedWords);
         if (!words.length) {
-            log("No rows selected for deletion.", "warn");
+            showStatusModal({
+                type: "warn",
+                title: "No selection",
+                message: "Select at least one row to delete.",
+            });
             return;
         }
 
-        const confirmDelete = confirm(
-            `Delete ${words.length} word(s) from user dictionary?`
-        );
-        if (!confirmDelete) return;
+        showConfirmModal({
+            title: "Delete selected words",
+            message: `Delete ${words.length} word(s) from user dictionary?`,
+            okLabel: "Yes, delete",
+            okClass: "btn-danger btn-sm",
+            onConfirm: async () => {
+                toggleBusy(true);
+                try {
+                    const data = await apiClient.delete(
+                        API_ENDPOINTS.USER_DICTIONARY.DELETE,
+                        { words }
+                    );
+                    const deleted = data.deleted || [];
+                    const notFound = data.not_found || [];
 
-        toggleBusy(true);
-        try {
-            const data = await apiClient.delete(
-                API_ENDPOINTS.USER_DICTIONARY.DELETE,
-                { words }
-            );
-            const deleted = data.deleted || [];
-            const notFound = data.not_found || [];
+                    showStatusModal({
+                        type: "success",
+                        title: "Delete complete",
+                        message: `Deleted: ${deleted.length}, not found: ${notFound.length}.`,
+                    });
 
-            log(
-                `Delete selected → deleted: ${deleted.length}, ` +
-                `not found: ${notFound.length}.`,
-                "ok"
-            );
-
-            deleted.forEach((w) => state.selectedWords.delete(w));
-            reloadTable(false);
-        } catch (err) {
-            log(`Delete selected failed: ${err.message || err}`, "err");
-        } finally {
-            toggleBusy(false);
-        }
+                    deleted.forEach((w) => state.selectedWords.delete(w));
+                    reloadTable(false);
+                } catch (err) {
+                    showStatusModal({
+                        type: "error",
+                        title: "Delete failed",
+                        message: err.message || String(err),
+                    });
+                } finally {
+                    toggleBusy(false);
+                }
+            },
+        });
     });
 }
 
@@ -598,6 +670,8 @@ function initDeleteSelected() {
 // Init
 // -----------------------------
 $(document).ready(function () {
+    setupModals();
+
     initAddSection();
     initDeleteSection();
     initUploadSection();
@@ -607,5 +681,9 @@ $(document).ready(function () {
 
     els.refreshTableBtn.addEventListener("click", () => reloadTable(false));
 
-    log("UI loaded. API base: " + BASE_URL, "info");
+    showStatusModal({
+        type: "info",
+        title: "Dashboard ready",
+        message: `User dictionary admin dashboard loaded. API base: ${BASE_URL}`,
+    });
 });
