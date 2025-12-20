@@ -135,10 +135,12 @@ def delete_user_words():
 def approve_words():
     data = request.get_json() or {}
     words = data.get("words") or data.get("word")
-    admin_name = data.get("admin_name")
 
     if not words:
         return jsonify({"error": "word or words is required"}), 400
+
+    # 🔐 Take admin name from authenticated JWT
+    admin_name = request.user.get("username")
 
     result = UserDictionaryService.approve_and_move_to_main(
         words,
