@@ -1,5 +1,5 @@
 import apiClient from "./apiClient.js";
-import API_ENDPOINTS from "./apiEndpoints.js";
+import API_ENDPOINTS, { BASE_URL } from "./apiEndpoints.js";
 
 // -----------------------------
 // DOM Elements
@@ -124,6 +124,15 @@ function displayResults(data) {
   results.style.transition = "opacity 0.4s ease";
   results.style.opacity = 0;
 
+  // Normalize URLs safely
+  const lowestUrl = data.download_lowest_url
+    ? `${BASE_URL}${data.download_lowest_url.startsWith("/") ? "" : "/"}${data.download_lowest_url}`
+    : "#";
+
+  const highestUrl = data.download_highest_url
+    ? `${BASE_URL}${data.download_highest_url.startsWith("/") ? "" : "/"}${data.download_highest_url}`
+    : "#";
+
   setTimeout(() => {
     results.style.color = "#41332e";
     results.innerHTML = `
@@ -131,17 +140,27 @@ function displayResults(data) {
       <div><b>ಅದೇ ರೀತಿಯ ಪದಗಳು:</b> ${data.unique_word_count}</div>
       <div><b>ಅತ್ಯಂತ ಚಿಕ್ಕ ಪದದ ಗಾತ್ರ:</b> ${data.min_word_length}</div>
       <div><b>ಅತ್ಯಂತ ದೊಡ್ಡ ಪದದ ಗಾತ್ರ:</b> ${data.max_word_length}</div>
+
       <div class="mt-3 d-grid gap-2">
-        <a class="btn btn-outline-kn w-100" href="${data.download_lowest_url}" target="_blank" rel="noopener noreferrer">
+        <a class="btn btn-outline-kn w-100"
+           href="${lowestUrl}"
+           target="_blank"
+           rel="noopener noreferrer">
           📥 ಚಿಕ್ಕ ಪದಗಳ CSV
         </a>
-        <a class="btn btn-outline-kn w-100" href="${data.download_highest_url}" target="_blank" rel="noopener noreferrer">
+
+        <a class="btn btn-outline-kn w-100"
+           href="${highestUrl}"
+           target="_blank"
+           rel="noopener noreferrer">
           📥 ದೊಡ್ಡ ಪದಗಳ CSV
         </a>
-      </div>`;
+      </div>
+    `;
     results.style.opacity = 1;
   }, 400);
 }
+
 
 
 // -----------------------------

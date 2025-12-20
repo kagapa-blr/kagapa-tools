@@ -4,11 +4,12 @@
  * Default Language: Kannada (kn)
  */
 import { showLoader, hideLoader } from "./loader.js";
+import { BASE_URL } from './apiEndpoints.js';
 
 (function () {
     const DEFAULT_LANG = 'kn';   // ✅ Default language
     const STORAGE_KEY = 'kagapa_language';
-    const LANG_PATH = '/static/language-switch/';
+    const LANG_PATH = `${BASE_URL}/static/language-switch/`;
 
     const langButtons = document.querySelectorAll('[data-lang-btn]');
     const translatableNodes = document.querySelectorAll('[data-i18n]');
