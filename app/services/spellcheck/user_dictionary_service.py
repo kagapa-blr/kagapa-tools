@@ -3,7 +3,7 @@ import re
 from collections import Counter
 
 from docx import Document  # python-docx
-from sqlalchemy import select
+from sqlalchemy import select, collate
 from sqlalchemy.exc import IntegrityError
 
 from app.config.database import kagapa_tools_db as db
@@ -25,11 +25,7 @@ class UserDictionaryService:
         if isinstance(words, str):
             words = [words]
 
-        result = {
-            "added": {},
-            "updated": {},
-            "skipped": []
-        }
+        result = {"added": {}, "updated": {}, "skipped": []}
 
         for raw_word in words:
             word = normalize_word(raw_word)
@@ -37,10 +33,12 @@ class UserDictionaryService:
                 result["skipped"].append(raw_word)
                 continue
 
-            # Check existing record FIRST to determine add/update
+            # ✅ Use explicit collation to avoid mix errors
             existing = (
                 db.session.execute(
-                    select(UserAddedWord).where(UserAddedWord.word == word)
+                    select(UserAddedWord).where(
+                        collate(UserAddedWord.word, "utf8mb4_unicode_ci") == word
+                    )
                 )
                 .scalars()
                 .first()
@@ -48,7 +46,6 @@ class UserDictionaryService:
 
             try:
                 if existing:
-                    # Update existing
                     old_freq = existing.frequency or 0
                     existing.frequency = old_freq + 1
                     if added_by and not existing.added_by:
@@ -56,9 +53,9 @@ class UserDictionaryService:
                     db.session.commit()
                     result["updated"][word] = existing.frequency
                     logger.info(
-                        f"[UserDictionaryService] User word frequency incremented: {word} -> {existing.frequency}")
+                        f"[UserDictionaryService] User word frequency incremented: {word} -> {existing.frequency}"
+                    )
                 else:
-                    # Add new
                     entry = UserAddedWord(
                         word=word,
                         added_by=added_by,
@@ -74,7 +71,9 @@ class UserDictionaryService:
                 db.session.rollback()
                 existing = (
                     db.session.execute(
-                        select(UserAddedWord).where(UserAddedWord.word == word)
+                        select(UserAddedWord).where(
+                            collate(UserAddedWord.word, "utf8mb4_unicode_ci") == word
+                        )
                     )
                     .scalars()
                     .first()
@@ -85,7 +84,8 @@ class UserDictionaryService:
                     db.session.commit()
                     result["updated"][word] = existing.frequency
                     logger.info(
-                        f"[UserDictionaryService] User word frequency incremented after race: {word} -> {existing.frequency}")
+                        f"[UserDictionaryService] User word frequency incremented after race: {word} -> {existing.frequency}"
+                    )
                 else:
                     result["skipped"].append(word)
                     logger.warning(f"[UserDictionaryService] Failed to add/update: {word}")
@@ -97,9 +97,11 @@ class UserDictionaryService:
     # -------------------------------------------------
     @staticmethod
     def get_word(word: str) -> UserAddedWord | None:
-        return UserAddedWord.query.filter_by(
-            word=normalize_word(word)
-        ).first()
+        return (
+            UserAddedWord.query
+            .filter(collate(UserAddedWord.word, "utf8mb4_unicode_ci") == normalize_word(word))
+            .first()
+        )
 
     @staticmethod
     def list_pending(limit: int = 100, offset: int = 0):
@@ -120,15 +122,11 @@ class UserDictionaryService:
         if isinstance(words, str):
             words = [words]
 
-        result = {
-            "deleted": [],
-            "not_found": []
-        }
+        result = {"deleted": [], "not_found": []}
 
         for raw_word in words:
             word = normalize_word(raw_word)
             entry = UserDictionaryService.get_word(word)
-
             if not entry:
                 result["not_found"].append(word)
                 continue
@@ -148,38 +146,29 @@ class UserDictionaryService:
         if isinstance(words, str):
             words = [words]
 
-        result = {
-            "moved": [],
-            "already_exists": [],
-            "not_found": [],
-            "failed": []
-        }
+        result = {"moved": [], "already_exists": [], "not_found": [], "failed": []}
 
         for raw_word in words:
             word = normalize_word(raw_word)
             user_entry = cls.get_word(word)
-
             if not user_entry:
                 result["not_found"].append(word)
                 continue
 
             try:
                 create_result = MainDictionaryService.create(
-                    word,
-                    added_by=admin_name or user_entry.added_by
+                    word, added_by=admin_name or user_entry.added_by
                 )
 
                 if word in create_result["skipped"]:
                     result["already_exists"].append(word)
                     continue
 
-                # Preserve frequency from user dictionary
                 main_entry = MainDictionaryService.get_word(word)
                 main_entry.frequency = user_entry.frequency
 
                 db.session.delete(user_entry)
                 db.session.commit()
-
                 logger.info(f"Word moved to main dictionary: {word}")
                 result["moved"].append(word)
 
@@ -191,95 +180,44 @@ class UserDictionaryService:
         return result
 
 
-# =====================================================================
-# 📄 BULK UPLOAD SERVICE – .txt / .docx → WORDS + FREQUENCY → USER TABLE
-# =====================================================================
-
+# ======================================================
+# BULK UPLOAD SERVICE (.txt / .docx → USER TABLE)
+# ======================================================
 ALLOWED_UPLOAD_EXTENSIONS = (".txt", ".docx")
 
 
 class UserDictionaryBulkUploadService:
-    """
-    Service to process uploaded documents (.txt, .docx),
-    extract words, compute frequencies, and update UserAddedWord table.
-    """
-
     WORD_RE = re.compile(r"\w+", re.UNICODE)
 
-    # -------------------------------------------------
-    # TEXT EXTRACTORS
-    # -------------------------------------------------
     @staticmethod
     def _extract_text_from_txt(file_obj: io.IOBase) -> str:
-        """
-        file_obj can be a Werkzeug FileStorage or file-like object.
-        Reads from the beginning and decodes as UTF-8 if bytes.
-        """
         try:
             file_obj.seek(0)
         except Exception:
             pass
-
         stream = getattr(file_obj, "stream", file_obj)
         data = stream.read()
-
         if isinstance(data, bytes):
             data = data.decode("utf-8", errors="ignore")
-
         return data
 
     @staticmethod
     def _extract_text_from_docx(file_obj: io.IOBase) -> str:
-        """
-        file_obj can be a Werkzeug FileStorage, file-like in binary mode,
-        or anything python-docx accepts as a file-like.
-        """
-        if hasattr(file_obj, "stream"):
-            stream = file_obj.stream
-        else:
-            stream = file_obj
-
+        stream = getattr(file_obj, "stream", file_obj)
         try:
             stream.seek(0)
         except Exception:
             pass
-
         document = Document(stream)
-        paragraphs = [p.text for p in document.paragraphs]
-        return "\n".join(paragraphs)
+        return "\n".join(p.text for p in document.paragraphs)
 
-    # -------------------------------------------------
-    # TOKENIZE + NORMALIZE
-    # -------------------------------------------------
     @classmethod
     def _tokenize_and_normalize(cls, text: str) -> list[str]:
-        """
-        Extract word-like tokens with regex, then normalize via normalize_word.
-        """
         raw_tokens = cls.WORD_RE.findall(text)
-        tokens: list[str] = []
+        return [normalize_word(t) for t in raw_tokens if normalize_word(t)]
 
-        for t in raw_tokens:
-            norm = normalize_word(t)
-            if norm:
-                tokens.append(norm)
-
-        return tokens
-
-    # -------------------------------------------------
-    # PUBLIC API
-    # -------------------------------------------------
     @classmethod
-    def process_file(
-            cls,
-            file_obj,
-            filename: str,
-            added_by: str | None = None,
-    ) -> dict:
-        """
-        Decide reader based on filename extension, extract text, compute
-        frequencies, and upsert into UserAddedWord.
-        """
+    def process_file(cls, file_obj, filename: str, added_by: str | None = None) -> dict:
         filename_lower = (filename or "").lower()
         logger.info(f"Processing uploaded file: {filename_lower!r}")
 
@@ -288,10 +226,11 @@ class UserDictionaryBulkUploadService:
                 f"Unsupported file type: {filename!r}. Only .txt and .docx are allowed."
             )
 
-        if filename_lower.endswith(".txt"):
-            text = cls._extract_text_from_txt(file_obj)
-        else:
-            text = cls._extract_text_from_docx(file_obj)
+        text = (
+            cls._extract_text_from_txt(file_obj)
+            if filename_lower.endswith(".txt")
+            else cls._extract_text_from_docx(file_obj)
+        )
 
         tokens = cls._tokenize_and_normalize(text)
         freq_map = Counter(tokens)
@@ -308,31 +247,30 @@ class UserDictionaryBulkUploadService:
 
         for word, count in freq_map.items():
             try:
-                existing: UserAddedWord | None = (
-                    UserAddedWord.query.filter_by(word=word).first()
+                existing = (
+                    UserAddedWord.query
+                    .filter(collate(UserAddedWord.word, "utf8mb4_unicode_ci") == word)
+                    .first()
                 )
-
                 if existing:
                     existing.frequency = (existing.frequency or 0) + count
                     db.session.add(existing)
                     result["updated"].append(word)
                 else:
-                    new_entry = UserAddedWord(
-                        word=word,
-                        added_by=added_by,
-                        verified=False,
-                        frequency=count,
+                    db.session.add(
+                        UserAddedWord(
+                            word=word,
+                            added_by=added_by,
+                            verified=False,
+                            frequency=count,
+                        )
                     )
-                    db.session.add(new_entry)
                     result["inserted"].append(word)
-
                 db.session.commit()
-
             except IntegrityError as e:
                 db.session.rollback()
                 logger.warning(f"IntegrityError for word '{word}': {e}")
                 result["skipped"].append(word)
-
             except Exception as e:
                 db.session.rollback()
                 logger.error(f"Failed to upsert word '{word}': {e}")

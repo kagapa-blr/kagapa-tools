@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from flask import Blueprint, render_template, request, jsonify, make_response, url_for, redirect
 import jwt
 
@@ -8,15 +11,33 @@ from app.services.user_management.create_users import (
 )
 
 user_login_bp = Blueprint("user_login", __name__)
-
-DEFAULT_REDIRECT = "/"
+load_dotenv()
+DEFAULT_REDIRECT = os.getenv("ROUTE_BASE_PATH", '/tools/')
 
 
 # ------------------ HELPERS ------------------
 
+# ------------------ HELPERS ------------------
+
 def _safe_next_url(next_url: str) -> str:
-    if not next_url or not next_url.startswith("/"):
+    """
+    Ensures the next_url starts with the application's base path.
+    If not, prepends DEFAULT_REDIRECT to it.
+    """
+    if not next_url:
         return DEFAULT_REDIRECT
+
+    # Strip leading slash if present to avoid double slashes
+    next_url = next_url.lstrip("/")
+
+    # Prepend DEFAULT_REDIRECT if missing
+    if not next_url.startswith(DEFAULT_REDIRECT.lstrip("/")):
+        next_url = DEFAULT_REDIRECT.rstrip("/") + "/" + next_url
+
+    # Ensure it starts with a single slash
+    if not next_url.startswith("/"):
+        next_url = "/" + next_url
+
     return next_url
 
 

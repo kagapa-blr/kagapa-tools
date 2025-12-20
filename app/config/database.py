@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
-
 from app.utils.logger import setup_logger
 
 # Load environment variables
@@ -11,7 +10,7 @@ load_dotenv()
 
 logger = setup_logger('dbinit')
 
-# Flask-SQLAlchemy instance (renamed to avoid conflicts)
+# Flask-SQLAlchemy instance
 kagapa_tools_db = SQLAlchemy()
 
 # Environment variables
@@ -28,8 +27,7 @@ MYSQL_DB_URL = f"{MYSQL_SERVER_URL}/{DB_NAME}?charset=utf8mb4"
 
 def create_database_if_not_exists():
     """
-    Create MySQL database if it does not exist.
-    Called during app startup.
+    Create MySQL database if it does not exist with utf8mb4 + InnoDB.
     """
     try:
         engine = create_engine(MYSQL_SERVER_URL, echo=False)
@@ -64,13 +62,13 @@ def init_db(app):
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     kagapa_tools_db.init_app(app)
+    logger.info("Database initialized with PyMySQL + utf8mb4")
 
-    logger.info("Database initialized with PyMySQL")
 
 def create_tables(app):
     """
-    Create all tables defined in SQLAlchemy models.
+    Create all tables defined in SQLAlchemy models with InnoDB + utf8mb4.
     """
     with app.app_context():
         kagapa_tools_db.create_all()
-        print("All tables created successfully.")
+        logger.info("All tables created successfully with InnoDB + utf8mb4")

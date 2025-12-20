@@ -51,8 +51,6 @@ def add_user_words():
     result = UserDictionaryService.add(words, added_by)
     return jsonify(result), 201
 
-
-
 @user_dictionary_bp.route("/pending", methods=["GET"])
 @login_required
 def list_pending_words():
