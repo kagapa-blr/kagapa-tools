@@ -523,13 +523,12 @@ function initApproveSelected() {
             return;
         }
 
-        const admin_name = prompt("Enter admin name (optional):") || null;
 
         toggleBusy(true);
         try {
             const res = await apiClient.post(
                 API_ENDPOINTS.USER_DICTIONARY.APPROVE,
-                { words, admin_name }
+                { words }
             );
             const moved = res.moved || [];
             const already = res.already_exists || [];
